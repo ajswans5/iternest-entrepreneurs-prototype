@@ -41,6 +41,16 @@
 .glass-input-card.compact { min-height: 96px; margin-bottom: 18px; }
 .glass-input-card.compact textarea { min-height: 62px; }
 .screen-home .or-divider { display: none; }
+.idea-box { min-height: 170px; }
+.memory-note {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f4ecdd;
+  color: #6d5847;
+  font-size: .92rem;
+  line-height: 1.4;
+}
 .screen-home .bottom-nav { bottom: calc(16px + env(safe-area-inset-bottom)); }
 @media (max-width: 480px) {
   .home-content { padding-top: 40px; padding-bottom: 128px; }
