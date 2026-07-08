@@ -1,3 +1,35 @@
+.track-card {
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  gap: 12px;
+  align-items: start;
+  margin: 0 0 14px;
+  padding: 13px 14px;
+  border-radius: 18px;
+  background: rgba(236, 255, 228, .18);
+  border: 1px solid rgba(190, 255, 170, .34);
+  color: #f7ffe9;
+  backdrop-filter: blur(14px);
+}
+.track-light {
+  width: 11px;
+  height: 11px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: #69d36f;
+  box-shadow: 0 0 0 5px rgba(105, 211, 111, .18);
+}
+.track-card strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: .98rem;
+}
+.track-card span {
+  display: block;
+  color: rgba(247, 255, 233, .78);
+  font-size: .86rem;
+  line-height: 1.32;
+}
 .continue-card {
   margin: 0 0 14px;
   padding: 14px 16px;
@@ -53,7 +85,7 @@
 }
 .screen-home .bottom-nav { bottom: calc(16px + env(safe-area-inset-bottom)); }
 @media (max-width: 480px) {
-  .home-content { padding-top: 40px; padding-bottom: 128px; }
+  .home-content { padding-top: 28px; padding-bottom: 128px; }
   .continue-card { padding: 12px 14px; }
   .custom-time-row input { font-size: .92rem; }
 }
