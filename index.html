@@ -54,36 +54,38 @@
           </div>
           <p class="prompt-label">What would be most helpful right now?</p>
           <div class="option-stack">
-            <button data-go="prototype">✏️ Build the next screen</button>
+            <button data-go="prototype">☕ Flesh out the idea</button>
+            <button data-go="prototype">🧭 Just show the next move</button>
             <button data-go="help">💬 I’m stuck — diagnose it</button>
             <button data-go="coffee">🔎 Review recent context</button>
-            <button data-go="prototype">🧭 Show me the smallest next move</button>
           </div>
         </div>
         <footer class="message-bar"><input placeholder="Message IterNest..." /><button>🎙️</button><button class="send">↑</button></footer>
       </section>
 
       <section class="screen screen-prototype" data-screen="prototype">
-        <header class="plain-header"><button class="icon-back" data-go="coach">←</button><strong>Prototype Session</strong></header>
+        <header class="plain-header"><button class="icon-back" data-go="coach">←</button><strong>Idea Workspace</strong></header>
         <section class="work-card">
-          <p class="field-label">Where you left off</p><p>Home screen flow</p><hr />
-          <p class="field-label">Available Time</p><p id="sessionTime">25 minutes</p><hr />
-          <p class="field-label">Recommended Next Step</p><p>Keep the time question on Home, then make the stuck button open coaching options that are not time-related.</p><hr />
-          <p class="field-label">Current Screen</p><div class="laptop-preview"><div class="side-panel"></div><div class="preview-lines"><span></span><span></span><span></span><span></span></div></div>
-          <p class="field-label">What should happen instead?</p><textarea class="small-textarea" placeholder="Describe what you want to see..."></textarea>
-          <div class="tool-row"><button>✏️ Sketch</button><button>📝 Describe</button><button>🎙️ Voice</button></div>
+          <p class="field-label">Use this when</p>
+          <p>You want help fleshing out what’s in your head. If you already know what to do, skip this and just take the next move.</p><hr />
+          <p class="field-label">Saved project memory</p>
+          <p>Home should use where the person left off + available time. Need Help should diagnose the blocker, not ask for time again.</p><hr />
+          <p class="field-label">Show me what’s in your head</p>
+          <textarea class="small-textarea idea-box" placeholder="Type, sketch, paste a note, or describe the picture you’re imagining..."></textarea>
+          <div class="tool-row"><button>✏️ Sketch</button><button>📝 Type</button><button>🎙️ Voice</button></div>
+          <p class="memory-note">IterNest saves the useful decisions from this workspace so next time it remembers why you built it this way.</p>
         </section>
-        <footer class="message-bar"><input placeholder="Message IterNest..." /><button>🎙️</button><button class="send">↑</button></footer>
+        <footer class="message-bar"><input placeholder="Add a quick note..." /><button>🎙️</button><button class="send">↑</button></footer>
       </section>
 
       <section class="screen screen-coffee" data-screen="coffee">
         <header class="plain-header"><button class="icon-back" data-go="home">←</button><strong>☕ Coffee</strong></header>
         <p class="subhead">Your conversations</p>
         <div class="history-list">
+          <button><strong>Idea workspace</strong><span>Use only when the user wants creative help</span><em>Today</em></button>
           <button><strong>Home screen flow</strong><span>Time selection + stuck help separation</span><em>Today</em></button>
           <button><strong>Time-aware home screen</strong><span>Changed opening question to available time</span><em>Today</em></button>
           <button><strong>UI feels cluttered</strong><span>Built a cleaner prototype</span><em>Today</em></button>
-          <button><strong>Subscription pricing ideas</strong><span>Explored 3 different models</span><em>May 13</em></button>
         </div>
       </section>
 
