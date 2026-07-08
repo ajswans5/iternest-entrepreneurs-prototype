@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IterNest for Entrepreneurs</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app-shell">
+    <section class="phone-frame" aria-label="IterNest prototype">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">IterNest</p>
+          <h1>for Entrepreneurs</h1>
+        </div>
+        <div class="mug" aria-label="coffee mug with IterNest leaf">☕<span>🌱</span></div>
+      </header>
+
+      <section class="screen is-active" data-screen="home">
+        <div class="hero-card">
+          <p class="small-note">Good morning.</p>
+          <h2>What’s on your mind today?</h2>
+          <textarea id="thoughtInput" placeholder="Share the real thing. Messy is welcome."></textarea>
+          <div class="action-row">
+            <button class="soft-button" data-action="voice">🎤 Talk</button>
+            <button class="primary-button" data-go="coach">💬 Type</button>
+          </div>
+        </div>
+
+        <button class="help-card" data-go="help">
+          <span>💡 Need Help</span>
+          <small>I’m stuck, but I don’t know what to ask.</small>
+        </button>
+      </section>
+
+      <section class="screen" data-screen="help">
+        <button class="back" data-go="home">← Coffee</button>
+        <div class="hero-card">
+          <p class="small-note">Let’s make this easier.</p>
+          <h2>What’s getting in your way?</h2>
+          <div class="choice-stack">
+            <button data-problem="I’m overwhelmed by too many next steps.">Too many next steps</button>
+            <button data-problem="I know the goal, but the path feels foggy.">Foggy path</button>
+            <button data-problem="The UI or product experience feels wrong.">The product feels wrong</button>
+            <button data-problem="I need to decide what matters today.">Need today’s priority</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="coach">
+        <button class="back" data-go="home">← Coffee</button>
+        <div class="coach-card">
+          <p class="small-note">Thinking with you…</p>
+          <h2>I hear you.</h2>
+          <p id="coachText">It doesn’t sound like you need more information. It sounds like you need a cleaner surface for the next decision.</p>
+          <div class="next-moves">
+            <button class="primary-button" data-go="prototype">Sketch it together</button>
+            <button class="soft-button" data-go="help">Talk it through</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" data-screen="prototype">
+        <button class="back" data-go="coach">← Coach</button>
+        <div class="hero-card">
+          <p class="small-note">Prototype Session</p>
+          <h2>Let’s make the idea visible.</h2>
+          <div class="mini-wireframe">
+            <div></div><div></div><div></div>
+          </div>
+          <p class="prototype-note">First draft: remove the dashboard feeling. Start with one warm question and one useful next move.</p>
+          <div class="action-row">
+            <button class="primary-button">Better</button>
+            <button class="soft-button">Not quite</button>
+          </div>
+        </div>
+      </section>
+
+      <nav class="bottom-nav">
+        <button data-go="home">🏠<span>Home</span></button>
+        <button data-go="help">💡<span>Help</span></button>
+        <button data-go="prototype">✏️<span>Sketch</span></button>
+        <button data-go="home">☕<span>Coffee</span></button>
+      </nav>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
