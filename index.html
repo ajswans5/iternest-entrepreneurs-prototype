@@ -12,181 +12,94 @@
       <section class="screen screen-home is-active" data-screen="home">
         <div class="cafe-bg"></div>
         <div class="dim-layer"></div>
-
         <header class="home-header">
-          <div class="brand-mark" aria-label="IterNest logo">
-            <span class="nest-arc"></span>
-            <span class="sprout">🌱</span>
-            <span class="nest-lines"></span>
-          </div>
+          <div class="brand-mark" aria-label="IterNest logo"><span class="nest-arc"></span><span class="sprout">🌱</span><span class="nest-lines"></span></div>
           <button class="menu-button" aria-label="menu">☰</button>
         </header>
-
         <section class="home-content">
           <p class="script-greeting">Good morning, AJ 🌿</p>
           <h1>How much time<br />do you have today?</h1>
-          <p class="home-intent">I’ll help find the most useful next step for the time you actually have.</p>
-
+          <p class="home-intent">I’ll use where you left off and the time you actually have to choose the most useful next step.</p>
+          <div class="continue-card">
+            <p>Where you left off</p>
+            <strong>Home screen flow</strong>
+            <span>Next useful move: separate time selection from “I’m stuck.”</span>
+          </div>
           <div class="time-choice-grid" aria-label="available time choices">
             <button data-time="10 minutes">10 min</button>
             <button data-time="25 minutes">25 min</button>
             <button data-time="45 minutes">45 min</button>
             <button data-time="90 minutes">90 min</button>
           </div>
-
-          <div class="glass-input-card">
-            <textarea id="thoughtInput" placeholder="Optional: what are you trying to move forward?"></textarea>
+          <div class="custom-time-row">
+            <input id="customTime" inputmode="numeric" placeholder="Or type your time, like 12 minutes" />
+            <button data-action="custom-time">Set</button>
+          </div>
+          <div class="glass-input-card compact">
+            <textarea id="thoughtInput" placeholder="Optional: add context about what you’re trying to move forward."></textarea>
             <button class="round-mic" data-action="voice" aria-label="voice input">🎙️</button>
           </div>
-
-          <div class="or-divider"><span></span><em>or</em><span></span></div>
-
-          <button class="need-help-pill" data-go="help">💡 Help me decide</button>
+          <button class="need-help-pill" data-go="help">💡 I’m stuck — help me sort it out</button>
         </section>
       </section>
 
       <section class="screen screen-chat" data-screen="coach">
-        <header class="plain-header">
-          <button class="icon-back" data-go="home">←</button>
-          <div class="tiny-brand"><span>🌱</span> IterNest</div>
-        </header>
-
+        <header class="plain-header"><button class="icon-back" data-go="home">←</button><div class="tiny-brand"><span>🌱</span> IterNest</div></header>
         <div class="chat-thread">
           <div class="user-bubble" id="userBubble">I have 25 minutes today.</div>
-
           <div class="coach-row">
             <div class="avatar">🌱</div>
-            <div>
-              <p class="coach-name">IterNest</p>
-              <div class="coach-bubble">
-                <p id="coachText">With 25 minutes, don’t open the whole project.</p>
-                <p>Pick one decision that would make tomorrow easier.</p>
-                <p>Given where you are, the most useful next step is to improve the first screen before touching the rest of the flow.</p>
-              </div>
-            </div>
+            <div><p class="coach-name">IterNest</p><div class="coach-bubble"><p id="coachText">With 25 minutes, don’t open the whole project.</p><p>Pick one decision that would make tomorrow easier.</p><p>Given where you left off, the most useful next step is to clean up the Home screen flow before touching the rest of the app.</p></div></div>
           </div>
-
           <p class="prompt-label">What would be most helpful right now?</p>
           <div class="option-stack">
             <button data-go="prototype">✏️ Build the next screen</button>
-            <button data-go="help">💬 Talk it through</button>
+            <button data-go="help">💬 I’m stuck — diagnose it</button>
             <button data-go="coffee">🔎 Review recent context</button>
-            <button data-go="help">🧭 I’m stuck for a different reason</button>
+            <button data-go="prototype">🧭 Show me the smallest next move</button>
           </div>
         </div>
-
-        <footer class="message-bar">
-          <input placeholder="Message IterNest..." />
-          <button>🎙️</button>
-          <button class="send">↑</button>
-        </footer>
+        <footer class="message-bar"><input placeholder="Message IterNest..." /><button>🎙️</button><button class="send">↑</button></footer>
       </section>
 
       <section class="screen screen-prototype" data-screen="prototype">
-        <header class="plain-header">
-          <button class="icon-back" data-go="coach">←</button>
-          <strong>Prototype Session</strong>
-        </header>
-
+        <header class="plain-header"><button class="icon-back" data-go="coach">←</button><strong>Prototype Session</strong></header>
         <section class="work-card">
-          <p class="field-label">Goal</p>
-          <p>Choose the highest-value next move for the time available.</p>
-          <hr />
-          <p class="field-label">Available Time</p>
-          <p id="sessionTime">25 minutes</p>
-          <hr />
-          <p class="field-label">Current Screen</p>
-          <div class="laptop-preview">
-            <div class="side-panel"></div>
-            <div class="preview-lines"><span></span><span></span><span></span><span></span></div>
-          </div>
-          <p class="field-label">Problem</p>
-          <p>The app needs to orient around the founder’s actual capacity today.</p>
-          <hr />
-          <p class="field-label">What should happen instead?</p>
-          <textarea class="small-textarea" placeholder="Describe what you want to see..."></textarea>
-          <div class="tool-row">
-            <button>✏️ Sketch</button>
-            <button>📝 Describe</button>
-            <button>🎙️ Voice</button>
-          </div>
+          <p class="field-label">Where you left off</p><p>Home screen flow</p><hr />
+          <p class="field-label">Available Time</p><p id="sessionTime">25 minutes</p><hr />
+          <p class="field-label">Recommended Next Step</p><p>Keep the time question on Home, then make the stuck button open coaching options that are not time-related.</p><hr />
+          <p class="field-label">Current Screen</p><div class="laptop-preview"><div class="side-panel"></div><div class="preview-lines"><span></span><span></span><span></span><span></span></div></div>
+          <p class="field-label">What should happen instead?</p><textarea class="small-textarea" placeholder="Describe what you want to see..."></textarea>
+          <div class="tool-row"><button>✏️ Sketch</button><button>📝 Describe</button><button>🎙️ Voice</button></div>
         </section>
-
-        <footer class="message-bar">
-          <input placeholder="Message IterNest..." />
-          <button>🎙️</button>
-          <button class="send">↑</button>
-        </footer>
-      </section>
-
-      <section class="screen screen-iterate" data-screen="iterate">
-        <header class="plain-header">
-          <button class="icon-back" data-go="prototype">←</button>
-          <div class="tiny-brand"><span>🌱</span> IterNest</div>
-        </header>
-
-        <div class="iteration-copy">
-          <p>I hear you.</p>
-          <p>You don’t want generic coaching.</p>
-          <p>You want the app to know how much time is available and choose the most useful next step from there.</p>
-        </div>
-
-        <div class="preview-card">
-          <div class="preview-logo">🌱</div>
-          <h2>How much time do you have today?</h2>
-          <p>I’ll help find the next right move.</p>
-          <input />
-          <button>💡 Help me decide</button>
-        </div>
-
-        <div class="approve-row">
-          <button class="yes">✓ Better</button>
-          <button class="no">× Not Quite</button>
-        </div>
-
-        <footer class="message-bar">
-          <input placeholder="Message IterNest..." />
-          <button>🎙️</button>
-          <button class="send">↑</button>
-        </footer>
+        <footer class="message-bar"><input placeholder="Message IterNest..." /><button>🎙️</button><button class="send">↑</button></footer>
       </section>
 
       <section class="screen screen-coffee" data-screen="coffee">
-        <header class="plain-header">
-          <button class="icon-back" data-go="home">←</button>
-          <strong>☕ Coffee</strong>
-        </header>
+        <header class="plain-header"><button class="icon-back" data-go="home">←</button><strong>☕ Coffee</strong></header>
         <p class="subhead">Your conversations</p>
         <div class="history-list">
+          <button><strong>Home screen flow</strong><span>Time selection + stuck help separation</span><em>Today</em></button>
           <button><strong>Time-aware home screen</strong><span>Changed opening question to available time</span><em>Today</em></button>
           <button><strong>UI feels cluttered</strong><span>Built a cleaner prototype</span><em>Today</em></button>
           <button><strong>Subscription pricing ideas</strong><span>Explored 3 different models</span><em>May 13</em></button>
-          <button><strong>Onboarding flow</strong><span>Simplified to 3 steps</span><em>May 12</em></button>
-          <button><strong>Marketing channel confusion</strong><span>Clarified best next step</span><em>May 11</em></button>
         </div>
       </section>
 
       <section class="screen screen-help" data-screen="help">
-        <header class="plain-header">
-          <button class="icon-back" data-go="home">←</button>
-          <strong>💡 Need Help</strong>
-        </header>
+        <header class="plain-header"><button class="icon-back" data-go="home">←</button><strong>💡 Need Help</strong></header>
         <section class="help-panel">
-          <h2>How much time do you have?</h2>
-          <p>Start with capacity. Then we’ll choose the next useful move.</p>
+          <h2>What feels stuck?</h2>
+          <p>This is for diagnosing the blocker, not choosing your available time.</p>
           <div class="help-options">
-            <button data-time="10 minutes">⏱ 10 minutes</button>
-            <button data-time="25 minutes">☕ 25 minutes</button>
-            <button data-time="45 minutes">🌿 45 minutes</button>
-            <button data-time="90 minutes">🚀 90 minutes</button>
-            <button data-problem="I’m overwhelmed and I don’t know how much time I have">😩 I’m overwhelmed</button>
+            <button data-problem="I don’t know which decision matters most">🧭 I don’t know which decision matters most</button>
+            <button data-problem="I’m overexplaining the idea">🧶 I’m overexplaining the idea</button>
+            <button data-problem="The screen doesn’t feel right yet">🖼️ The screen doesn’t feel right yet</button>
+            <button data-problem="I’m overwhelmed by too many possible next steps">😩 I’m overwhelmed by too many possible next steps</button>
+            <button data-problem="I need help turning this into a plan">🚀 I need help turning this into a plan</button>
           </div>
         </section>
-        <footer class="message-bar">
-          <input placeholder="Message IterNest..." />
-          <button>🎙️</button>
-          <button class="send">↑</button>
-        </footer>
+        <footer class="message-bar"><input placeholder="Message IterNest..." /><button>🎙️</button><button class="send">↑</button></footer>
       </section>
 
       <nav class="bottom-nav">
