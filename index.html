@@ -19,12 +19,21 @@
         </header>
         <section class="home-content">
           <p class="script-greeting">Good morning, AJ 🌿</p>
+
+          <div class="track-card">
+            <div class="track-light" aria-hidden="true"></div>
+            <div>
+              <strong>You’re on track.</strong>
+              <span>Beta milestone still looks achievable if we finish the Whiteboard flow next.</span>
+            </div>
+          </div>
+
           <h1>How much time<br />do you have today?</h1>
-          <p class="home-intent">I’ll use where you left off and the time you actually have to choose the most useful next step.</p>
+          <p class="home-intent">I’ll use where you left off, your milestone, and the time you actually have to choose the most useful next step.</p>
           <div class="continue-card">
             <p>Where you left off</p>
-            <strong>Home screen flow</strong>
-            <span>Next useful move: separate time selection from “I’m stuck.”</span>
+            <strong>Whiteboard flow</strong>
+            <span>Current milestone: complete the beta Home experience.</span>
           </div>
           <div class="time-choice-grid" aria-label="available time choices">
             <button data-time="10 minutes">10 min</button>
@@ -50,11 +59,11 @@
           <div class="user-bubble" id="userBubble">I have 25 minutes today.</div>
           <div class="coach-row">
             <div class="avatar">🌱</div>
-            <div><p class="coach-name">IterNest</p><div class="coach-bubble"><p id="coachText">With 25 minutes, don’t open the whole project.</p><p>Pick one decision that would make tomorrow easier.</p><p>Given where you left off, the most useful next step is to clean up the Home screen flow before touching the rest of the app.</p></div></div>
+            <div><p class="coach-name">IterNest</p><div class="coach-bubble"><p id="coachText">With 25 minutes, don’t open the whole project.</p><p>You’re on track for the beta milestone.</p><p>Given where you left off, the most useful next step is to finish shaping the Whiteboard flow before touching the rest of the app.</p></div></div>
           </div>
           <p class="prompt-label">What would be most helpful right now?</p>
           <div class="option-stack">
-            <button data-go="prototype">☕ Flesh out the idea</button>
+            <button data-go="prototype">☕ Flesh out the Whiteboard</button>
             <button data-go="prototype">🧭 Just show the next move</button>
             <button data-go="help">💬 I’m stuck — diagnose it</button>
             <button data-go="coffee">🔎 Review recent context</button>
@@ -64,16 +73,16 @@
       </section>
 
       <section class="screen screen-prototype" data-screen="prototype">
-        <header class="plain-header"><button class="icon-back" data-go="coach">←</button><strong>Idea Workspace</strong></header>
+        <header class="plain-header"><button class="icon-back" data-go="coach">←</button><strong>Whiteboard</strong></header>
         <section class="work-card">
           <p class="field-label">Use this when</p>
           <p>You want help fleshing out what’s in your head. If you already know what to do, skip this and just take the next move.</p><hr />
           <p class="field-label">Saved project memory</p>
-          <p>Home should use where the person left off + available time. Need Help should diagnose the blocker, not ask for time again.</p><hr />
+          <p>Home uses where the person left off + available time + milestone health. Need Help diagnoses the blocker, not time.</p><hr />
           <p class="field-label">Show me what’s in your head</p>
           <textarea class="small-textarea idea-box" placeholder="Type, sketch, paste a note, or describe the picture you’re imagining..."></textarea>
           <div class="tool-row"><button>✏️ Sketch</button><button>📝 Type</button><button>🎙️ Voice</button></div>
-          <p class="memory-note">IterNest saves the useful decisions from this workspace so next time it remembers why you built it this way.</p>
+          <p class="memory-note">IterNest saves the useful decisions from this Whiteboard so next time it remembers why you built it this way.</p>
         </section>
         <footer class="message-bar"><input placeholder="Add a quick note..." /><button>🎙️</button><button class="send">↑</button></footer>
       </section>
@@ -82,10 +91,10 @@
         <header class="plain-header"><button class="icon-back" data-go="home">←</button><strong>☕ Coffee</strong></header>
         <p class="subhead">Your conversations</p>
         <div class="history-list">
-          <button><strong>Idea workspace</strong><span>Use only when the user wants creative help</span><em>Today</em></button>
+          <button><strong>You’re on track</strong><span>Added milestone health to the dashboard</span><em>Today</em></button>
+          <button><strong>Whiteboard</strong><span>Use only when the user wants creative help</span><em>Today</em></button>
           <button><strong>Home screen flow</strong><span>Time selection + stuck help separation</span><em>Today</em></button>
           <button><strong>Time-aware home screen</strong><span>Changed opening question to available time</span><em>Today</em></button>
-          <button><strong>UI feels cluttered</strong><span>Built a cleaner prototype</span><em>Today</em></button>
         </div>
       </section>
 
