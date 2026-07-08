@@ -24,16 +24,24 @@
 
         <section class="home-content">
           <p class="script-greeting">Good morning, AJ 🌿</p>
-          <h1>What’s on your<br />mind today?</h1>
+          <h1>How much time<br />do you have today?</h1>
+          <p class="home-intent">I’ll help find the most useful next step for the time you actually have.</p>
+
+          <div class="time-choice-grid" aria-label="available time choices">
+            <button data-time="10 minutes">10 min</button>
+            <button data-time="25 minutes">25 min</button>
+            <button data-time="45 minutes">45 min</button>
+            <button data-time="90 minutes">90 min</button>
+          </div>
 
           <div class="glass-input-card">
-            <textarea id="thoughtInput" placeholder="Share what you’re working through..."></textarea>
+            <textarea id="thoughtInput" placeholder="Optional: what are you trying to move forward?"></textarea>
             <button class="round-mic" data-action="voice" aria-label="voice input">🎙️</button>
           </div>
 
           <div class="or-divider"><span></span><em>or</em><span></span></div>
 
-          <button class="need-help-pill" data-go="help">💡 Need Help</button>
+          <button class="need-help-pill" data-go="help">💡 Help me decide</button>
         </section>
       </section>
 
@@ -44,26 +52,25 @@
         </header>
 
         <div class="chat-thread">
-          <div class="user-bubble" id="userBubble">I think I’m stuck on the UI.</div>
+          <div class="user-bubble" id="userBubble">I have 25 minutes today.</div>
 
           <div class="coach-row">
             <div class="avatar">🌱</div>
             <div>
               <p class="coach-name">IterNest</p>
               <div class="coach-bubble">
-                <p id="coachText">I read through what you wrote.</p>
-                <p>It doesn’t sound like you’re stuck building the UI.</p>
-                <p>It sounds like you’re trying to explain a visual idea using words.</p>
-                <p>That usually means it’s time to sketch instead of debate.</p>
+                <p id="coachText">With 25 minutes, don’t open the whole project.</p>
+                <p>Pick one decision that would make tomorrow easier.</p>
+                <p>Given where you are, the most useful next step is to improve the first screen before touching the rest of the flow.</p>
               </div>
             </div>
           </div>
 
           <p class="prompt-label">What would be most helpful right now?</p>
           <div class="option-stack">
-            <button data-go="prototype">✏️ Build a prototype</button>
+            <button data-go="prototype">✏️ Build the next screen</button>
             <button data-go="help">💬 Talk it through</button>
-            <button data-go="coffee">🔎 Explore another idea</button>
+            <button data-go="coffee">🔎 Review recent context</button>
             <button data-go="help">🧭 I’m stuck for a different reason</button>
           </div>
         </div>
@@ -83,7 +90,10 @@
 
         <section class="work-card">
           <p class="field-label">Goal</p>
-          <p>Design a cleaner coaching experience.</p>
+          <p>Choose the highest-value next move for the time available.</p>
+          <hr />
+          <p class="field-label">Available Time</p>
+          <p id="sessionTime">25 minutes</p>
           <hr />
           <p class="field-label">Current Screen</p>
           <div class="laptop-preview">
@@ -91,7 +101,7 @@
             <div class="preview-lines"><span></span><span></span><span></span><span></span></div>
           </div>
           <p class="field-label">Problem</p>
-          <p>Too much explanation.</p>
+          <p>The app needs to orient around the founder’s actual capacity today.</p>
           <hr />
           <p class="field-label">What should happen instead?</p>
           <textarea class="small-textarea" placeholder="Describe what you want to see..."></textarea>
@@ -117,16 +127,16 @@
 
         <div class="iteration-copy">
           <p>I hear you.</p>
-          <p>You want it to feel like sitting down for coffee.</p>
-          <p>Let’s make the interface disappear.</p>
+          <p>You don’t want generic coaching.</p>
+          <p>You want the app to know how much time is available and choose the most useful next step from there.</p>
         </div>
 
         <div class="preview-card">
           <div class="preview-logo">🌱</div>
-          <h2>Good morning.</h2>
-          <p>What’s on your mind today?</p>
+          <h2>How much time do you have today?</h2>
+          <p>I’ll help find the next right move.</p>
           <input />
-          <button>💡 Need Help</button>
+          <button>💡 Help me decide</button>
         </div>
 
         <div class="approve-row">
@@ -148,11 +158,11 @@
         </header>
         <p class="subhead">Your conversations</p>
         <div class="history-list">
+          <button><strong>Time-aware home screen</strong><span>Changed opening question to available time</span><em>Today</em></button>
           <button><strong>UI feels cluttered</strong><span>Built a cleaner prototype</span><em>Today</em></button>
           <button><strong>Subscription pricing ideas</strong><span>Explored 3 different models</span><em>May 13</em></button>
           <button><strong>Onboarding flow</strong><span>Simplified to 3 steps</span><em>May 12</em></button>
           <button><strong>Marketing channel confusion</strong><span>Clarified best next step</span><em>May 11</em></button>
-          <button><strong>Feature prioritization</strong><span>Used impact / effort matrix</span><em>May 10</em></button>
         </div>
       </section>
 
@@ -162,14 +172,14 @@
           <strong>💡 Need Help</strong>
         </header>
         <section class="help-panel">
-          <h2>What’s getting in your way?</h2>
-          <p>Choose one or tell me in your own words.</p>
+          <h2>How much time do you have?</h2>
+          <p>Start with capacity. Then we’ll choose the next useful move.</p>
           <div class="help-options">
-            <button data-problem="I’m stuck on a problem">😵‍💫 I’m stuck on a problem</button>
-            <button data-problem="I need help making a decision">☘️ I need help making a decision</button>
-            <button data-problem="I’m overwhelmed">😩 I’m overwhelmed</button>
-            <button data-problem="I need a plan">🚀 I need a plan</button>
-            <button data-problem="Something else">✏️ Something else</button>
+            <button data-time="10 minutes">⏱ 10 minutes</button>
+            <button data-time="25 minutes">☕ 25 minutes</button>
+            <button data-time="45 minutes">🌿 45 minutes</button>
+            <button data-time="90 minutes">🚀 90 minutes</button>
+            <button data-problem="I’m overwhelmed and I don’t know how much time I have">😩 I’m overwhelmed</button>
           </div>
         </section>
         <footer class="message-bar">
