@@ -3,6 +3,7 @@ const coachText = document.querySelector('#coachText');
 const thoughtInput = document.querySelector('#thoughtInput');
 const userBubble = document.querySelector('#userBubble');
 const sessionTime = document.querySelector('#sessionTime');
+const customTimeInput = document.querySelector('#customTime');
 
 let selectedTime = '25 minutes';
 
@@ -20,11 +21,25 @@ function setSelectedTime(time) {
   if (sessionTime) sessionTime.textContent = time;
   if (userBubble) userBubble.textContent = `I have ${time} today.`;
   if (coachText) {
-    coachText.textContent = `With ${time}, we should not open the whole project. The best next move is one useful decision that fits the time you actually have.`;
+    coachText.textContent = `With ${time}, we should use where you left off instead of opening the whole project. The most useful next step is the smallest decision that moves the current screen forward.`;
   }
 }
 
+function setCustomTime() {
+  const raw = customTimeInput?.value.trim();
+  if (!raw) return;
+  const time = /minute|min|hour|hr/i.test(raw) ? raw : `${raw} minutes`;
+  setSelectedTime(time);
+  showScreen('coach');
+}
+
 document.addEventListener('click', (event) => {
+  const customTimeTarget = event.target.closest('[data-action="custom-time"]');
+  if (customTimeTarget) {
+    setCustomTime();
+    return;
+  }
+
   const timeTarget = event.target.closest('[data-time]');
   if (timeTarget) {
     setSelectedTime(timeTarget.dataset.time);
@@ -40,7 +55,7 @@ document.addEventListener('click', (event) => {
       if (thought) {
         if (userBubble) userBubble.textContent = `I have ${selectedTime}. ${thought}`;
         if (coachText) {
-          coachText.textContent = `Given ${selectedTime}, I would not try to solve the whole thing. I’d choose the smallest next step that makes ${thought.toLowerCase()} clearer.`;
+          coachText.textContent = `Given ${selectedTime} and where you left off, I’d make the smallest next step that makes this clearer: ${thought}`;
         }
       }
     }
@@ -52,7 +67,7 @@ document.addEventListener('click', (event) => {
   if (problemTarget) {
     if (userBubble) userBubble.textContent = problemTarget.dataset.problem;
     if (coachText) {
-      coachText.textContent = `I hear this: “${problemTarget.dataset.problem}.” Let’s start with capacity first, then choose the next useful move.`;
+      coachText.textContent = `I hear this: “${problemTarget.dataset.problem}.” This is not a time problem; it’s a blocker. Let’s name the blocker, then choose one next move that fits your available time.`;
     }
     showScreen('coach');
     return;
@@ -60,7 +75,7 @@ document.addEventListener('click', (event) => {
 
   const voiceTarget = event.target.closest('[data-action="voice"]');
   if (voiceTarget) {
-    thoughtInput.value = 'I need help choosing the most useful next step for the time I have.';
+    thoughtInput.value = 'I need help choosing the most useful next step from where I left off.';
     thoughtInput.focus();
   }
 });
