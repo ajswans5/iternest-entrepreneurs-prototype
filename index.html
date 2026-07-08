@@ -7,81 +7,183 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="app-shell">
-    <section class="phone-frame" aria-label="IterNest prototype">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">IterNest</p>
-          <h1>for Entrepreneurs</h1>
-        </div>
-        <div class="mug" aria-label="coffee mug with IterNest leaf">☕<span>🌱</span></div>
-      </header>
+  <main class="prototype-stage">
+    <section class="phone" aria-label="IterNest for Entrepreneurs clickable prototype">
+      <section class="screen screen-home is-active" data-screen="home">
+        <div class="cafe-bg"></div>
+        <div class="dim-layer"></div>
 
-      <section class="screen is-active" data-screen="home">
-        <div class="hero-card">
-          <p class="small-note">Good morning.</p>
-          <h2>What’s on your mind today?</h2>
-          <textarea id="thoughtInput" placeholder="Share the real thing. Messy is welcome."></textarea>
-          <div class="action-row">
-            <button class="soft-button" data-action="voice">🎤 Talk</button>
-            <button class="primary-button" data-go="coach">💬 Type</button>
+        <header class="home-header">
+          <div class="brand-mark" aria-label="IterNest logo">
+            <span class="nest-arc"></span>
+            <span class="sprout">🌱</span>
+            <span class="nest-lines"></span>
+          </div>
+          <button class="menu-button" aria-label="menu">☰</button>
+        </header>
+
+        <section class="home-content">
+          <p class="script-greeting">Good morning, AJ 🌿</p>
+          <h1>What’s on your<br />mind today?</h1>
+
+          <div class="glass-input-card">
+            <textarea id="thoughtInput" placeholder="Share what you’re working through..."></textarea>
+            <button class="round-mic" data-action="voice" aria-label="voice input">🎙️</button>
+          </div>
+
+          <div class="or-divider"><span></span><em>or</em><span></span></div>
+
+          <button class="need-help-pill" data-go="help">💡 Need Help</button>
+        </section>
+      </section>
+
+      <section class="screen screen-chat" data-screen="coach">
+        <header class="plain-header">
+          <button class="icon-back" data-go="home">←</button>
+          <div class="tiny-brand"><span>🌱</span> IterNest</div>
+        </header>
+
+        <div class="chat-thread">
+          <div class="user-bubble" id="userBubble">I think I’m stuck on the UI.</div>
+
+          <div class="coach-row">
+            <div class="avatar">🌱</div>
+            <div>
+              <p class="coach-name">IterNest</p>
+              <div class="coach-bubble">
+                <p id="coachText">I read through what you wrote.</p>
+                <p>It doesn’t sound like you’re stuck building the UI.</p>
+                <p>It sounds like you’re trying to explain a visual idea using words.</p>
+                <p>That usually means it’s time to sketch instead of debate.</p>
+              </div>
+            </div>
+          </div>
+
+          <p class="prompt-label">What would be most helpful right now?</p>
+          <div class="option-stack">
+            <button data-go="prototype">✏️ Build a prototype</button>
+            <button data-go="help">💬 Talk it through</button>
+            <button data-go="coffee">🔎 Explore another idea</button>
+            <button data-go="help">🧭 I’m stuck for a different reason</button>
           </div>
         </div>
 
-        <button class="help-card" data-go="help">
-          <span>💡 Need Help</span>
-          <small>I’m stuck, but I don’t know what to ask.</small>
-        </button>
+        <footer class="message-bar">
+          <input placeholder="Message IterNest..." />
+          <button>🎙️</button>
+          <button class="send">↑</button>
+        </footer>
       </section>
 
-      <section class="screen" data-screen="help">
-        <button class="back" data-go="home">← Coffee</button>
-        <div class="hero-card">
-          <p class="small-note">Let’s make this easier.</p>
+      <section class="screen screen-prototype" data-screen="prototype">
+        <header class="plain-header">
+          <button class="icon-back" data-go="coach">←</button>
+          <strong>Prototype Session</strong>
+        </header>
+
+        <section class="work-card">
+          <p class="field-label">Goal</p>
+          <p>Design a cleaner coaching experience.</p>
+          <hr />
+          <p class="field-label">Current Screen</p>
+          <div class="laptop-preview">
+            <div class="side-panel"></div>
+            <div class="preview-lines"><span></span><span></span><span></span><span></span></div>
+          </div>
+          <p class="field-label">Problem</p>
+          <p>Too much explanation.</p>
+          <hr />
+          <p class="field-label">What should happen instead?</p>
+          <textarea class="small-textarea" placeholder="Describe what you want to see..."></textarea>
+          <div class="tool-row">
+            <button>✏️ Sketch</button>
+            <button>📝 Describe</button>
+            <button>🎙️ Voice</button>
+          </div>
+        </section>
+
+        <footer class="message-bar">
+          <input placeholder="Message IterNest..." />
+          <button>🎙️</button>
+          <button class="send">↑</button>
+        </footer>
+      </section>
+
+      <section class="screen screen-iterate" data-screen="iterate">
+        <header class="plain-header">
+          <button class="icon-back" data-go="prototype">←</button>
+          <div class="tiny-brand"><span>🌱</span> IterNest</div>
+        </header>
+
+        <div class="iteration-copy">
+          <p>I hear you.</p>
+          <p>You want it to feel like sitting down for coffee.</p>
+          <p>Let’s make the interface disappear.</p>
+        </div>
+
+        <div class="preview-card">
+          <div class="preview-logo">🌱</div>
+          <h2>Good morning.</h2>
+          <p>What’s on your mind today?</p>
+          <input />
+          <button>💡 Need Help</button>
+        </div>
+
+        <div class="approve-row">
+          <button class="yes">✓ Better</button>
+          <button class="no">× Not Quite</button>
+        </div>
+
+        <footer class="message-bar">
+          <input placeholder="Message IterNest..." />
+          <button>🎙️</button>
+          <button class="send">↑</button>
+        </footer>
+      </section>
+
+      <section class="screen screen-coffee" data-screen="coffee">
+        <header class="plain-header">
+          <button class="icon-back" data-go="home">←</button>
+          <strong>☕ Coffee</strong>
+        </header>
+        <p class="subhead">Your conversations</p>
+        <div class="history-list">
+          <button><strong>UI feels cluttered</strong><span>Built a cleaner prototype</span><em>Today</em></button>
+          <button><strong>Subscription pricing ideas</strong><span>Explored 3 different models</span><em>May 13</em></button>
+          <button><strong>Onboarding flow</strong><span>Simplified to 3 steps</span><em>May 12</em></button>
+          <button><strong>Marketing channel confusion</strong><span>Clarified best next step</span><em>May 11</em></button>
+          <button><strong>Feature prioritization</strong><span>Used impact / effort matrix</span><em>May 10</em></button>
+        </div>
+      </section>
+
+      <section class="screen screen-help" data-screen="help">
+        <header class="plain-header">
+          <button class="icon-back" data-go="home">←</button>
+          <strong>💡 Need Help</strong>
+        </header>
+        <section class="help-panel">
           <h2>What’s getting in your way?</h2>
-          <div class="choice-stack">
-            <button data-problem="I’m overwhelmed by too many next steps.">Too many next steps</button>
-            <button data-problem="I know the goal, but the path feels foggy.">Foggy path</button>
-            <button data-problem="The UI or product experience feels wrong.">The product feels wrong</button>
-            <button data-problem="I need to decide what matters today.">Need today’s priority</button>
+          <p>Choose one or tell me in your own words.</p>
+          <div class="help-options">
+            <button data-problem="I’m stuck on a problem">😵‍💫 I’m stuck on a problem</button>
+            <button data-problem="I need help making a decision">☘️ I need help making a decision</button>
+            <button data-problem="I’m overwhelmed">😩 I’m overwhelmed</button>
+            <button data-problem="I need a plan">🚀 I need a plan</button>
+            <button data-problem="Something else">✏️ Something else</button>
           </div>
-        </div>
-      </section>
-
-      <section class="screen" data-screen="coach">
-        <button class="back" data-go="home">← Coffee</button>
-        <div class="coach-card">
-          <p class="small-note">Thinking with you…</p>
-          <h2>I hear you.</h2>
-          <p id="coachText">It doesn’t sound like you need more information. It sounds like you need a cleaner surface for the next decision.</p>
-          <div class="next-moves">
-            <button class="primary-button" data-go="prototype">Sketch it together</button>
-            <button class="soft-button" data-go="help">Talk it through</button>
-          </div>
-        </div>
-      </section>
-
-      <section class="screen" data-screen="prototype">
-        <button class="back" data-go="coach">← Coach</button>
-        <div class="hero-card">
-          <p class="small-note">Prototype Session</p>
-          <h2>Let’s make the idea visible.</h2>
-          <div class="mini-wireframe">
-            <div></div><div></div><div></div>
-          </div>
-          <p class="prototype-note">First draft: remove the dashboard feeling. Start with one warm question and one useful next move.</p>
-          <div class="action-row">
-            <button class="primary-button">Better</button>
-            <button class="soft-button">Not quite</button>
-          </div>
-        </div>
+        </section>
+        <footer class="message-bar">
+          <input placeholder="Message IterNest..." />
+          <button>🎙️</button>
+          <button class="send">↑</button>
+        </footer>
       </section>
 
       <nav class="bottom-nav">
         <button data-go="home">🏠<span>Home</span></button>
-        <button data-go="help">💡<span>Help</span></button>
-        <button data-go="prototype">✏️<span>Sketch</span></button>
-        <button data-go="home">☕<span>Coffee</span></button>
+        <button data-go="help">💡<span>Need Help</span></button>
+        <button data-go="prototype">📁<span>Projects</span></button>
+        <button data-go="coffee">☕<span>Coffee</span></button>
       </nav>
     </section>
   </main>
