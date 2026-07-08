@@ -82,15 +82,19 @@ button { border: 0; cursor: pointer; }
 .nest-arc { top: 10px; height: 28px; border-bottom:0; border-radius: 60px 60px 0 0; }
 .nest-lines { bottom: 11px; height: 10px; border-top:0; border-radius:0 0 50px 50px; }
 .menu-button { color:#fff; background:transparent; font-size: 1.45rem; }
-.home-content { padding: 68px 24px 24px; }
+.home-content { padding: 54px 24px 24px; }
 .script-greeting { margin: 0 0 10px; font-family: Georgia, serif; font-style: italic; color: #ffe2b5; font-size: 1.05rem; }
-.home-content h1 { margin:0 0 28px; font-size: clamp(2.15rem, 8vw, 3rem); line-height:1.04; letter-spacing:-.06em; }
+.home-content h1 { margin:0 0 10px; font-size: clamp(2.05rem, 8vw, 2.8rem); line-height:1.04; letter-spacing:-.06em; }
+.home-intent { margin: 0 0 18px; color: rgba(255,247,232,.82); line-height: 1.4; max-width: 310px; }
+.time-choice-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom: 16px; }
+.time-choice-grid button { padding: 10px 6px; border-radius: 999px; background: rgba(255,250,242,.18); color:#fff8e9; border: 1px solid rgba(255,255,255,.28); backdrop-filter: blur(12px); box-shadow: 0 10px 24px rgba(0,0,0,.16); font-size: .9rem; }
+.time-choice-grid button.is-selected { background: rgba(255,226,181,.9); color:#3b2314; border-color: rgba(255,255,255,.58); }
 .glass-input-card {
-  min-height: 132px; border-radius: 22px; padding: 16px; display:flex; gap:12px; align-items:flex-end;
+  min-height: 112px; border-radius: 22px; padding: 16px; display:flex; gap:12px; align-items:flex-end;
   background: rgba(255,250,242,.78); color: var(--ink); backdrop-filter: blur(16px);
   box-shadow: 0 18px 42px rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.45);
 }
-.glass-input-card textarea { flex:1; min-height: 96px; resize:none; border:0; outline:0; background:transparent; color:var(--ink); }
+.glass-input-card textarea { flex:1; min-height: 78px; resize:none; border:0; outline:0; background:transparent; color:var(--ink); }
 .round-mic { width:46px; height:46px; border-radius:50%; background:#b98250; color:#fff; box-shadow:0 10px 25px rgba(0,0,0,.22); }
 .or-divider { display:flex; align-items:center; gap:10px; margin:22px 12px; color: rgba(255,255,255,.75); }
 .or-divider span { height:1px; flex:1; background: rgba(255,255,255,.35); }
@@ -159,4 +163,5 @@ button:active { transform:scale(.98); }
 @media (max-width:480px) {
   .prototype-stage { padding:0; }
   .phone { width:100%; height:100vh; min-height:100vh; border:0; border-radius:0; }
+  .time-choice-grid { grid-template-columns: repeat(2, 1fr); }
 }
