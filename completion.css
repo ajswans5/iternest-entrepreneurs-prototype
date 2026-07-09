@@ -1,0 +1,75 @@
+.screen-complete {
+  background: linear-gradient(160deg, #fffaf2 0%, #f2eadc 52%, #e8f0df 100%);
+}
+.completion-card {
+  margin-top: 8px;
+  padding: 22px;
+  border-radius: 28px;
+  background: rgba(255, 253, 248, .92);
+  border: 1px solid rgba(75, 52, 35, .14);
+  box-shadow: 0 20px 55px rgba(75, 52, 35, .12);
+}
+.completion-mark {
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 18px;
+  border-radius: 20px;
+  background: #e8f0df;
+  font-size: 1.8rem;
+}
+.completion-card h2 {
+  margin: 0 0 8px;
+  color: #1f4b25;
+  font-size: 1.9rem;
+  letter-spacing: -.04em;
+}
+.completion-copy {
+  margin: 0 0 18px;
+  color: #6f6258;
+  line-height: 1.45;
+}
+.completion-summary {
+  margin: 12px 0;
+  padding: 14px;
+  border-radius: 18px;
+  background: #fffaf2;
+  border: 1px solid rgba(75, 52, 35, .12);
+}
+.completion-summary.soft {
+  background: #f4ecdd;
+}
+.completion-summary p {
+  margin: 0 0 4px;
+  color: #806f63;
+  font-size: .76rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.completion-summary strong {
+  display: block;
+  color: #2d241f;
+  line-height: 1.35;
+}
+.completion-status {
+  margin: 14px 0 18px;
+  color: #31552e;
+  font-weight: 800;
+}
+.completion-actions {
+  display: grid;
+  gap: 9px;
+}
+.completion-actions button {
+  width: 100%;
+  padding: 13px 15px;
+  border-radius: 999px;
+  background: #efe3d1;
+  color: #3b2314;
+  font-weight: 800;
+}
+.completion-actions button:first-child {
+  background: #4f8748;
+  color: #fff;
+}
