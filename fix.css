@@ -40,6 +40,17 @@
 .continue-card p { margin: 0 0 4px; color: rgba(255,247,232,.72); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
 .continue-card strong { display:block; font-size: 1rem; margin-bottom: 2px; }
 .continue-card span { display:block; color: rgba(255,247,232,.78); font-size: .88rem; line-height: 1.35; }
+.projects-content { padding: 0 22px 130px; overflow-y: auto; height: calc(100% - 90px); }
+.project-list { display: grid; gap: 10px; margin: 16px 0; }
+.project-card { width: 100%; display: grid; gap: 10px; padding: 15px; border-radius: 20px; background: #fffaf2; border: 1px solid #e3d8c9; text-align: left; color: #33261f; }
+.project-card.active-project { border-color: #b88b4f; box-shadow: 0 10px 28px rgba(85, 55, 28, .12); }
+.project-card strong { display: block; margin-bottom: 4px; font-size: 1rem; }
+.project-card p { margin: 0; color: #77675a; line-height: 1.3; }
+.project-card em { color: #8a6a45; font-style: normal; font-size: .85rem; }
+.project-status { display: inline-block; width: 10px; height: 10px; margin-right: 7px; border-radius: 999px; }
+.project-status.green { background: #69d36f; }
+.project-status.yellow { background: #d6a840; }
+.new-project-button { width: 100%; margin: 2px 0 12px; padding: 13px; border-radius: 999px; background: #efe3d1; color: #3b2314; font-weight: 800; }
 .custom-time-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin: -6px 0 14px; }
 .custom-time-row input { min-width: 0; border-radius: 999px; border: 1px solid rgba(255,255,255,.28); background: rgba(255,250,242,.18); color: #fff8e9; padding: 12px 14px; outline: 0; }
 .custom-time-row input::placeholder { color: rgba(255,247,232,.62); }
