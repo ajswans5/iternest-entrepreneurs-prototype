@@ -1,32 +1,426 @@
-const screens = document.querySelectorAll('.screen');
-const coachText = document.querySelector('#coachText');
-const thoughtInput = document.querySelector('#thoughtInput');
-const userBubble = document.querySelector('#userBubble');
-const sessionTime = document.querySelector('#sessionTime');
-const customTimeInput = document.querySelector('#customTime');
-const bottomNav = document.querySelector('.bottom-nav');
+const STORAGE_KEY = "iternest_entrepreneurs_state_v1";
 
-let selectedTime = '25 minutes';
+const screens = document.querySelectorAll(".screen");
+const bottomNav = document.querySelector(".bottom-nav");
+const coachText = document.querySelector("#coachText");
+const userBubble = document.querySelector("#userBubble");
+const thoughtInput = document.querySelector("#thoughtInput");
+const customTimeInput = document.querySelector("#customTime");
+
+let selectedTime = "25 minutes";
+let selectedProjectType = "app";
+const appState = loadState();
+
+initialize();
+
+function initialize() {
+  hydrateSetupControls();
+  ensureInitialProject();
+  renderAll();
+  showScreen(appState.activeProjectId ? "home" : "welcome");
+}
+
+function hydrateSetupControls() {
+  const choices = [...document.querySelectorAll(".project-choice-grid button")];
+  const types = ["app", "book", "business", "content", "creative", "other"];
+
+  choices.forEach((button, index) => {
+    button.dataset.projectType = types[index] ?? "other";
+    button.addEventListener("click", () => {
+      selectedProjectType = button.dataset.projectType;
+      choices.forEach((choice) => choice.classList.toggle("is-selected", choice === button));
+    });
+  });
+
+  choices[0]?.classList.add("is-selected");
+}
+
+function ensureInitialProject() {
+  if (appState.projects.length > 0 && appState.activeProjectId) return;
+  saveState();
+}
 
 function showScreen(name) {
   screens.forEach((screen) => {
-    screen.classList.toggle('is-active', screen.dataset.screen === name);
+    screen.classList.toggle("is-active", screen.dataset.screen === name);
   });
-  if (bottomNav) bottomNav.classList.toggle('is-hidden', name === 'welcome');
+
+  if (bottomNav) bottomNav.classList.toggle("is-hidden", name === "welcome");
+  renderAll();
 }
 
-showScreen('welcome');
+function renderAll() {
+  renderHome();
+  renderNextMove();
+  renderProjects();
+  renderCoffee();
+  renderWhiteboard();
+}
+
+function activeProject() {
+  return appState.projects.find((project) => project.id === appState.activeProjectId) ?? null;
+}
+
+function createProject({ type, milestone, targetDate }) {
+  const now = new Date().toISOString();
+  const project = {
+    id: `project-${Date.now()}`,
+    type,
+    name: projectTypeLabel(type),
+    milestone: milestone || defaultMilestone(type),
+    targetDate: targetDate || "",
+    whereLeftOff: "Ready to begin.",
+    milestoneHealth: "on-track",
+    progress: [],
+    recommendations: [],
+    memory: {
+      whiteboard: [],
+      decisions: [],
+      blockers: [],
+      coffee: []
+    },
+    createdAt: now,
+    updatedAt: now
+  };
+
+  project.currentRecommendation = recommendNextMove(project, { availableTime: selectedTime });
+  project.whereLeftOff = project.currentRecommendation.title;
+  project.recommendations.push(project.currentRecommendation);
+
+  appState.projects.push(project);
+  appState.activeProjectId = project.id;
+  saveCoffee(project, "First-run setup", `Milestone: ${project.milestone}`);
+  saveState();
+  return project;
+}
+
+function recommendNextMove(project, options = {}) {
+  const availableTime = options.availableTime ?? selectedTime;
+  const minutes = parseMinutes(availableTime);
+  const lastProgress = project.progress.at(-1);
+  const blocker = project.memory.blockers.at(-1);
+  const template = recommendationTemplate(project.type, minutes, lastProgress, blocker);
+  const title = fillTemplate(template.title, project, blocker);
+
+  return {
+    id: `rec-${Date.now()}`,
+    title,
+    summary: fillTemplate(template.summary, project, blocker),
+    steps: template.steps.map((step) => fillTemplate(step, project, blocker)),
+    estimatedMinutes: minutes,
+    confidence: confidenceFor(project, lastProgress, blocker),
+    readiness: readinessFor(project, blocker),
+    createdAt: new Date().toISOString()
+  };
+}
+
+function recommendationTemplate(type, minutes, lastProgress, blocker) {
+  if (blocker || lastProgress?.status === "stuck") {
+    return {
+      title: "Name the blocker and make one smaller move.",
+      summary: "This is not a time problem. IterNest should reduce the blocker before asking you to push harder.",
+      steps: [
+        "Write the blocker in one plain sentence.",
+        "Choose the smallest part of {milestone} that can move without solving the whole problem.",
+        "Save the result so tomorrow starts from the clearer place."
+      ]
+    };
+  }
+
+  const short = minutes <= 15;
+  const medium = minutes <= 45;
+
+  const templates = {
+    app: {
+      title: short ? "Tighten one app decision." : medium ? "Shape one usable app path." : "Build the next usable app slice.",
+      summary: "Use the time to move one part of the product closer to the milestone instead of opening the whole app.",
+      steps: [
+        "Pick the one screen or flow that affects {milestone}.",
+        "Decide what must be true for that piece to feel usable.",
+        "Make or save the smallest change that moves that flow forward."
+      ]
+    },
+    book: {
+      title: short ? "Clarify the next book section." : medium ? "Draft one rough book section." : "Move one chapter meaningfully forward.",
+      summary: "Use the time to create usable pages or structure instead of rethinking the whole book.",
+      steps: [
+        "Choose the scene, chapter, or argument closest to {milestone}.",
+        "Write a rough version without polishing.",
+        "Save the next sentence or section future-you should start with."
+      ]
+    },
+    business: {
+      title: short ? "Clarify one offer decision." : medium ? "Write one customer-facing offer." : "Test the next business step.",
+      summary: "Use the time to turn the business milestone into one customer-facing move.",
+      steps: [
+        "Pick the audience or customer tied to {milestone}.",
+        "Write the offer, message, or next ask in plain language.",
+        "Save what changed and the next person or step to pursue."
+      ]
+    },
+    content: {
+      title: short ? "Pick the next content angle." : medium ? "Draft one useful content piece." : "Create the next publishable content step.",
+      summary: "Use the time to move one piece toward publishing instead of planning the whole channel.",
+      steps: [
+        "Choose the idea closest to {milestone}.",
+        "Draft the hook, outline, or rough version.",
+        "Save the next edit or publishing step."
+      ]
+    },
+    creative: {
+      title: short ? "Clarify the next creative choice." : medium ? "Make one visible creative pass." : "Move the creative project one version forward.",
+      summary: "Use the time to create a visible artifact that makes the next decision easier.",
+      steps: [
+        "Choose the part of the work closest to {milestone}.",
+        "Make one rough version or visible pass.",
+        "Save what still needs deciding."
+      ]
+    },
+    other: {
+      title: short ? "Choose the next clear decision." : medium ? "Make one concrete move." : "Move the project one meaningful step forward.",
+      summary: "Use the time to reduce uncertainty and leave a clear place to continue.",
+      steps: [
+        "Choose the part of {milestone} that feels most ready to move.",
+        "Make one concrete artifact, note, draft, or decision.",
+        "Save where to continue next."
+      ]
+    }
+  };
+
+  return templates[type] ?? templates.other;
+}
+
+function diagnoseBlocker(problem, project = activeProject()) {
+  const text = problem.toLowerCase();
+  let blockerType = "unclear next move";
+  let recommendation = "Reduce the blocker before choosing a bigger work block.";
+
+  if (text.includes("decision")) {
+    blockerType = "decision ambiguity";
+    recommendation = "Name the decision, write the two realistic options, and choose the one that protects momentum.";
+  } else if (text.includes("overexplaining")) {
+    blockerType = "message clarity";
+    recommendation = "Write the idea in one sentence for the person it helps most.";
+  } else if (text.includes("screen")) {
+    blockerType = "experience mismatch";
+    recommendation = "Identify the one moment that feels wrong and adjust only that moment.";
+  } else if (text.includes("overwhelmed")) {
+    blockerType = "too many open paths";
+    recommendation = "Hide every path except the one that moves the current milestone.";
+  } else if (text.includes("plan")) {
+    blockerType = "missing sequence";
+    recommendation = "Turn the goal into three ordered moves: first, next, later.";
+  }
+
+  const diagnosis = {
+    id: `blocker-${Date.now()}`,
+    problem,
+    blockerType,
+    recommendation,
+    createdAt: new Date().toISOString()
+  };
+
+  if (project) {
+    project.memory.blockers.push(diagnosis);
+    project.milestoneHealth = "needs-attention";
+    project.currentRecommendation = recommendNextMove(project, { availableTime: selectedTime });
+    project.recommendations.push(project.currentRecommendation);
+    saveCoffee(project, "Need Help", `${blockerType}: ${recommendation}`);
+    saveState();
+  }
+
+  return diagnosis;
+}
+
+function saveProgress(status) {
+  const project = activeProject();
+  if (!project) return;
+
+  document.querySelectorAll("[data-progress]").forEach((button) => {
+    button.classList.toggle("is-selected", button.dataset.progress === status);
+  });
+
+  const note = document.querySelector(".progress-note")?.value.trim() || "";
+  const record = {
+    id: `progress-${Date.now()}`,
+    status,
+    note,
+    recommendationTitle: project.currentRecommendation?.title ?? "",
+    createdAt: new Date().toISOString()
+  };
+
+  project.progress.push(record);
+  project.whereLeftOff = progressLeftOff(record, project);
+  project.milestoneHealth = status === "stuck" ? "needs-attention" : status === "partial" ? "watch" : "on-track";
+  project.currentRecommendation = recommendNextMove(project, { availableTime: selectedTime });
+  project.recommendations.push(project.currentRecommendation);
+  project.updatedAt = new Date().toISOString();
+
+  saveCoffee(project, "Progress saved", `${progressStatusLabel(status)} ${note}`.trim());
+  saveState();
+  renderAll();
+}
+
+function saveWhiteboard() {
+  const project = activeProject();
+  const note = document.querySelector(".idea-box")?.value.trim();
+  if (!project || !note) return;
+
+  project.memory.whiteboard.push({
+    id: `whiteboard-${Date.now()}`,
+    note,
+    createdAt: new Date().toISOString()
+  });
+  project.whereLeftOff = "Whiteboard";
+  project.updatedAt = new Date().toISOString();
+  saveCoffee(project, "Whiteboard", note);
+  saveState();
+  renderAll();
+}
+
+function saveMessageFromActiveScreen(sendButton) {
+  const project = activeProject();
+  const screen = sendButton.closest(".screen");
+  const input = screen?.querySelector(".message-bar input");
+  const note = input?.value.trim();
+  if (!project || !note) return;
+
+  saveCoffee(project, "Conversation", note);
+  project.whereLeftOff = note;
+  project.updatedAt = new Date().toISOString();
+  input.value = "";
+  saveState();
+  renderAll();
+
+  if (screen?.dataset.screen === "help" || screen?.dataset.screen === "coach") {
+    if (userBubble) userBubble.textContent = note;
+    if (coachText) {
+      coachText.textContent = `I saved that context. Given ${selectedTime}, the next useful move is still: ${project.currentRecommendation.title}`;
+    }
+    showScreen("coach");
+  }
+}
+
+function renderHome() {
+  const project = activeProject();
+  if (!project) return;
+
+  const healthCopy = milestoneHealthCopy(project);
+  const trackStrong = document.querySelector(".track-card strong");
+  const trackSpan = document.querySelector(".track-card span");
+  const trackLight = document.querySelector(".track-light");
+  if (trackStrong) trackStrong.textContent = healthCopy.title;
+  if (trackSpan) trackSpan.textContent = healthCopy.detail;
+  if (trackLight) trackLight.className = `track-light ${project.milestoneHealth}`;
+
+  const continueCard = document.querySelector(".continue-card");
+  if (continueCard) {
+    continueCard.innerHTML = `
+      <p>Where you left off</p>
+      <strong>${escapeHtml(project.whereLeftOff)}</strong>
+      <span>Current milestone: ${escapeHtml(project.milestone)}</span>
+    `;
+  }
+
+  if (userBubble) userBubble.textContent = `I have ${selectedTime} today.`;
+}
+
+function renderNextMove() {
+  const project = activeProject();
+  if (!project) return;
+
+  const recommendation = project.currentRecommendation ?? recommendNextMove(project, { availableTime: selectedTime });
+  project.currentRecommendation = recommendation;
+
+  const title = document.querySelector(".next-move-title");
+  if (title) title.textContent = recommendation.title;
+
+  const nextMoveSummary = document.querySelector(".screen-nextmove .work-card > p:not(.field-label)");
+  if (nextMoveSummary) nextMoveSummary.textContent = recommendation.summary;
+
+  const label = document.querySelector(".screen-nextmove .field-label");
+  if (label) label.textContent = `For the next ${recommendation.estimatedMinutes} minutes`;
+
+  const steps = document.querySelector(".next-steps");
+  if (steps) {
+    steps.innerHTML = recommendation.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("");
+  }
+}
+
+function renderProjects() {
+  const list = document.querySelector(".project-list");
+  if (!list) return;
+
+  list.innerHTML = appState.projects.map((project) => `
+    <button class="project-card ${project.id === appState.activeProjectId ? "active-project" : ""}" data-project-id="${project.id}">
+      <div>
+        <span class="project-status ${healthColor(project.milestoneHealth)}"></span>
+        <strong>${escapeHtml(project.name)}</strong>
+        <p>${escapeHtml(project.milestone)}</p>
+      </div>
+      <em>Next: ${escapeHtml(project.currentRecommendation?.title ?? project.whereLeftOff)}</em>
+    </button>
+  `).join("");
+}
+
+function renderCoffee() {
+  const project = activeProject();
+  const list = document.querySelector(".history-list");
+  if (!project || !list) return;
+
+  const items = project.memory.coffee.slice(-8).toReversed();
+  list.innerHTML = items.length
+    ? items.map((item) => `
+      <button>
+        <strong>${escapeHtml(item.title)}</strong>
+        <span>${escapeHtml(item.detail)}</span>
+        <em>${relativeDay(item.createdAt)}</em>
+      </button>
+    `).join("")
+    : `<button><strong>No coffee history yet</strong><span>Conversations and saved decisions will appear here.</span><em>Today</em></button>`;
+}
+
+function renderWhiteboard() {
+  const project = activeProject();
+  const memoryNote = document.querySelector(".screen-prototype .memory-note");
+  if (!project || !memoryNote) return;
+
+  const latest = project.memory.whiteboard.at(-1);
+  memoryNote.textContent = latest
+    ? `Saved decision: ${latest.note}`
+    : "IterNest saves the useful decisions from this Whiteboard so next time it remembers why you built it this way.";
+}
+
+function saveCoffee(project, title, detail) {
+  project.memory.coffee.push({
+    id: `coffee-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    title,
+    detail,
+    createdAt: new Date().toISOString()
+  });
+}
 
 function setSelectedTime(time) {
   selectedTime = time;
-  document.querySelectorAll('[data-time]').forEach((button) => {
-    button.classList.toggle('is-selected', button.dataset.time === time);
+  document.querySelectorAll("[data-time]").forEach((button) => {
+    button.classList.toggle("is-selected", button.dataset.time === time);
   });
-  if (sessionTime) sessionTime.textContent = time;
-  if (userBubble) userBubble.textContent = `I have ${time} today.`;
-  if (coachText) {
-    coachText.textContent = `With ${time}, we should use where you left off instead of opening the whole project. The most useful next step is the smallest decision that moves the current screen forward.`;
+
+  const project = activeProject();
+  if (project) {
+    project.currentRecommendation = recommendNextMove(project, { availableTime: time });
+    project.recommendations.push(project.currentRecommendation);
+    saveState();
   }
+
+  if (userBubble) userBubble.textContent = `I have ${time} today.`;
+  if (coachText && project) {
+    coachText.innerHTML = `
+      With ${escapeHtml(time)}, use where you left off instead of opening the whole project.
+      <br><br>${escapeHtml(project.currentRecommendation.summary)}
+    `;
+  }
+  renderAll();
 }
 
 function setCustomTime() {
@@ -34,31 +428,41 @@ function setCustomTime() {
   if (!raw) return;
   const time = /minute|min|hour|hr/i.test(raw) ? raw : `${raw} minutes`;
   setSelectedTime(time);
-  showScreen('coach');
+  showScreen("coach");
 }
 
-function saveProgress(status) {
-  document.querySelectorAll('[data-progress]').forEach((button) => {
-    button.classList.toggle('is-selected', button.dataset.progress === status);
-  });
-
-  const statusText = {
-    done: 'Done — pick up with the next useful move.',
-    partial: 'Partly done — pick up where the last session paused.',
-    stuck: 'Stuck — diagnose the blocker before choosing the next move.'
-  }[status];
-
-  const continueCard = document.querySelector('.continue-card');
-  if (continueCard) {
-    continueCard.innerHTML = `<p>Where you left off</p><strong>${statusText}</strong><span>Saved from your last Next Move session.</span>`;
+document.addEventListener("click", (event) => {
+  const menuTarget = event.target.closest(".menu-button");
+  if (menuTarget) {
+    showScreen("projects");
+    return;
   }
 
-  const trackCard = document.querySelector('.track-card strong');
-  if (trackCard) trackCard.textContent = status === 'stuck' ? 'Needs attention.' : 'You’re on track.';
-}
+  const setupTarget = event.target.closest("[data-go='home'].primary-start");
+  if (setupTarget) {
+    event.preventDefault();
+    const milestone = document.querySelector(".setup-input")?.value.trim();
+    const targetDate = document.querySelectorAll(".setup-input")[1]?.value.trim();
+    createProject({ type: selectedProjectType, milestone, targetDate });
+    showScreen("home");
+    return;
+  }
 
-document.addEventListener('click', (event) => {
-  const progressTarget = event.target.closest('[data-progress]');
+  const projectTarget = event.target.closest("[data-project-id]");
+  if (projectTarget) {
+    appState.activeProjectId = projectTarget.dataset.projectId;
+    saveState();
+    showScreen("home");
+    return;
+  }
+
+  const newProjectTarget = event.target.closest(".new-project-button");
+  if (newProjectTarget) {
+    showScreen("welcome");
+    return;
+  }
+
+  const progressTarget = event.target.closest("[data-progress]");
   if (progressTarget) {
     saveProgress(progressTarget.dataset.progress);
     return;
@@ -70,42 +474,225 @@ document.addEventListener('click', (event) => {
     return;
   }
 
-  const timeTarget = event.target.closest('[data-time]');
+  const timeTarget = event.target.closest("[data-time]");
   if (timeTarget) {
     setSelectedTime(timeTarget.dataset.time);
-    showScreen('coach');
+    showScreen("coach");
     return;
   }
 
-  const goTarget = event.target.closest('[data-go]');
-  if (goTarget) {
-    const destination = goTarget.dataset.go;
-    if (destination === 'coach') {
-      const thought = thoughtInput?.value.trim();
-      if (thought) {
-        if (userBubble) userBubble.textContent = `I have ${selectedTime}. ${thought}`;
-        if (coachText) {
-          coachText.textContent = `Given ${selectedTime} and where you left off, I’d make the smallest next step that makes this clearer: ${thought}`;
-        }
-      }
-    }
-    showScreen(destination);
-    return;
-  }
-
-  const problemTarget = event.target.closest('[data-problem]');
+  const problemTarget = event.target.closest("[data-problem]");
   if (problemTarget) {
+    const diagnosis = diagnoseBlocker(problemTarget.dataset.problem);
     if (userBubble) userBubble.textContent = problemTarget.dataset.problem;
     if (coachText) {
-      coachText.textContent = `I hear this: “${problemTarget.dataset.problem}.” This is not a time problem; it’s a blocker. Let’s name the blocker, then choose one next move that fits your available time.`;
+      coachText.innerHTML = `
+        I hear this: "${escapeHtml(problemTarget.dataset.problem)}."
+        <br><br>This looks like <strong>${escapeHtml(diagnosis.blockerType)}</strong>.
+        <br><br>${escapeHtml(diagnosis.recommendation)}
+      `;
     }
-    showScreen('coach');
+    showScreen("coach");
     return;
   }
 
   const voiceTarget = event.target.closest('[data-action="voice"]');
   if (voiceTarget) {
-    thoughtInput.value = 'I need help choosing the most useful next step from where I left off.';
-    thoughtInput.focus();
+    if (thoughtInput) {
+      thoughtInput.value = "I need help choosing the most useful next step from where I left off.";
+      thoughtInput.focus();
+    }
+    return;
+  }
+
+  const sendTarget = event.target.closest(".message-bar .send");
+  if (sendTarget && event.target.closest(".screen-prototype")) {
+    saveWhiteboard();
+    return;
+  }
+
+  if (sendTarget) {
+    saveMessageFromActiveScreen(sendTarget);
+    return;
+  }
+
+  const whiteboardToolTarget = event.target.closest(".tool-row button");
+  if (whiteboardToolTarget) {
+    const ideaBox = document.querySelector(".idea-box");
+    if (ideaBox) {
+      ideaBox.focus();
+      if (!ideaBox.value.trim()) ideaBox.value = "I want to save this idea so I can pick it back up later.";
+    }
+    return;
+  }
+
+  const goTarget = event.target.closest("[data-go]");
+  if (goTarget) {
+    const destination = goTarget.dataset.go;
+    if (destination === "coach") updateCoachFromHomeContext();
+    showScreen(destination);
   }
 });
+
+function updateCoachFromHomeContext() {
+  const project = activeProject();
+  const thought = thoughtInput?.value.trim();
+  if (!project) return;
+
+  if (thought) {
+    if (userBubble) userBubble.textContent = `I have ${selectedTime}. ${thought}`;
+    if (coachText) {
+      coachText.textContent = `Given ${selectedTime}, ${project.milestone}, and where you left off, the next useful move is: ${project.currentRecommendation.title}`;
+    }
+    saveCoffee(project, "Coffee", thought);
+    saveState();
+  }
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { activeProjectId: null, projects: [] };
+    const parsed = JSON.parse(raw);
+    const projects = Array.isArray(parsed.projects) ? parsed.projects.map(normalizeProject) : [];
+    return {
+      activeProjectId: projects.some((project) => project.id === parsed.activeProjectId) ? parsed.activeProjectId : projects[0]?.id ?? null,
+      projects
+    };
+  } catch {
+    return { activeProjectId: null, projects: [] };
+  }
+}
+
+function normalizeProject(project) {
+  const normalized = {
+    id: project.id ?? `project-${Date.now()}`,
+    type: project.type ?? "other",
+    name: project.name ?? projectTypeLabel(project.type ?? "other"),
+    milestone: project.milestone ?? defaultMilestone(project.type ?? "other"),
+    targetDate: project.targetDate ?? "",
+    whereLeftOff: project.whereLeftOff ?? "Ready to begin.",
+    milestoneHealth: project.milestoneHealth ?? "on-track",
+    progress: Array.isArray(project.progress) ? project.progress : [],
+    recommendations: Array.isArray(project.recommendations) ? project.recommendations : [],
+    memory: {
+      whiteboard: Array.isArray(project.memory?.whiteboard) ? project.memory.whiteboard : [],
+      decisions: Array.isArray(project.memory?.decisions) ? project.memory.decisions : [],
+      blockers: Array.isArray(project.memory?.blockers) ? project.memory.blockers : [],
+      coffee: Array.isArray(project.memory?.coffee) ? project.memory.coffee : []
+    },
+    currentRecommendation: project.currentRecommendation ?? null,
+    createdAt: project.createdAt ?? new Date().toISOString(),
+    updatedAt: project.updatedAt ?? project.createdAt ?? new Date().toISOString()
+  };
+
+  if (!normalized.currentRecommendation) {
+    normalized.currentRecommendation = recommendNextMove(normalized, { availableTime: selectedTime });
+  }
+
+  return normalized;
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+}
+
+function parseMinutes(value) {
+  const lower = String(value ?? "").toLowerCase();
+  const number = Number(lower.match(/\d+/)?.[0] ?? 25);
+  return lower.includes("hour") || lower.includes("hr") ? number * 60 : number;
+}
+
+function fillTemplate(value, project, blocker) {
+  return value
+    .replaceAll("{milestone}", project.milestone)
+    .replaceAll("{project}", project.name)
+    .replaceAll("{blocker}", blocker?.blockerType ?? "the current blocker");
+}
+
+function confidenceFor(project, lastProgress, blocker) {
+  if (blocker || lastProgress?.status === "stuck") return "Medium";
+  if (project.progress.length >= 2) return "High";
+  return "Medium";
+}
+
+function readinessFor(project, blocker) {
+  if (blocker) return "Blocker first";
+  if (project.milestoneHealth === "needs-attention") return "Needs attention";
+  return "Ready for next move";
+}
+
+function milestoneHealthCopy(project) {
+  if (project.milestoneHealth === "needs-attention") {
+    return {
+      title: "Needs attention.",
+      detail: "The latest blocker should be diagnosed before pushing the milestone forward."
+    };
+  }
+  if (project.milestoneHealth === "watch") {
+    return {
+      title: "Still moving.",
+      detail: "The milestone is active, but the next session should pick up from partial progress."
+    };
+  }
+  return {
+    title: "You're on track.",
+    detail: `${project.milestone} still looks achievable if we take the next useful step.`
+  };
+}
+
+function progressLeftOff(record, project) {
+  if (record.status === "done") return project.currentRecommendation?.title ?? "Next move completed.";
+  if (record.status === "partial") return record.note || "Partly done. Pick up from the last stopping point.";
+  return record.note || "Stuck. Diagnose the blocker before choosing the next move.";
+}
+
+function progressStatusLabel(status) {
+  return {
+    done: "Done.",
+    partial: "Partly done.",
+    stuck: "Stuck."
+  }[status] ?? "Progress saved.";
+}
+
+function projectTypeLabel(type) {
+  return {
+    app: "App Project",
+    book: "Book Project",
+    business: "Business Project",
+    content: "Content Project",
+    creative: "Creative Project",
+    other: "Project"
+  }[type] ?? "Project";
+}
+
+function defaultMilestone(type) {
+  return {
+    app: "Complete the next usable product flow",
+    book: "Finish the next meaningful section",
+    business: "Clarify the next customer-facing step",
+    content: "Publish the next useful piece",
+    creative: "Create the next visible version",
+    other: "Move the project forward"
+  }[type] ?? "Move the project forward";
+}
+
+function healthColor(health) {
+  return health === "on-track" ? "green" : "yellow";
+}
+
+function relativeDay(value) {
+  if (!value) return "Today";
+  const then = new Date(value);
+  const now = new Date();
+  return then.toDateString() === now.toDateString() ? "Today" : then.toLocaleDateString();
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}

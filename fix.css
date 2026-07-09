@@ -28,12 +28,15 @@
 .setup-card { padding: 16px; border-radius: 24px; background: rgba(255, 250, 242, .16); border: 1px solid rgba(255, 255, 255, .24); backdrop-filter: blur(16px); }
 .project-choice-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0 16px; }
 .project-choice-grid button { min-height: 48px; border-radius: 15px; background: rgba(255, 250, 242, .18); border: 1px solid rgba(255, 255, 255, .22); color: #fff8e9; font-size: .86rem; text-align: left; padding: 10px; }
+.project-choice-grid button.is-selected { background: rgba(255, 226, 181, .88); border-color: rgba(255, 255, 255, .58); color: #3b2314; }
 .setup-label { display: block; margin: 12px 0 6px; color: rgba(255, 248, 233, .8); font-size: .78rem; letter-spacing: .06em; text-transform: uppercase; }
 .setup-label span { color: rgba(255, 248, 233, .52); text-transform: none; letter-spacing: 0; }
 .setup-input { width: 100%; box-sizing: border-box; border: 1px solid rgba(255,255,255,.25); border-radius: 16px; background: rgba(255, 250, 242, .9); color: #3b2314; padding: 12px 13px; outline: 0; }
 .primary-start { width: 100%; margin-top: 16px; border-radius: 999px; padding: 14px 16px; background: #ffe2b5; color: #3b2314; font-weight: 800; }
 .track-card { display: grid; grid-template-columns: 16px 1fr; gap: 12px; align-items: start; margin: 0 0 14px; padding: 13px 14px; border-radius: 18px; background: rgba(236, 255, 228, .18); border: 1px solid rgba(190, 255, 170, .34); color: #f7ffe9; backdrop-filter: blur(14px); }
 .track-light { width: 11px; height: 11px; margin-top: 4px; border-radius: 999px; background: #69d36f; box-shadow: 0 0 0 5px rgba(105, 211, 111, .18); }
+.track-light.watch { background: #d6a840; box-shadow: 0 0 0 5px rgba(214, 168, 64, .2); }
+.track-light.needs-attention { background: #d87958; box-shadow: 0 0 0 5px rgba(216, 121, 88, .2); }
 .track-card strong { display: block; margin-bottom: 3px; font-size: .98rem; }
 .track-card span { display: block; color: rgba(247, 255, 233, .78); font-size: .86rem; line-height: 1.32; }
 .continue-card { margin: 0 0 14px; padding: 14px 16px; border-radius: 18px; background: rgba(255, 250, 242, .18); border: 1px solid rgba(255,255,255,.26); backdrop-filter: blur(14px); color: #fff8e9; }
