@@ -4,6 +4,7 @@ const thoughtInput = document.querySelector('#thoughtInput');
 const userBubble = document.querySelector('#userBubble');
 const sessionTime = document.querySelector('#sessionTime');
 const customTimeInput = document.querySelector('#customTime');
+const bottomNav = document.querySelector('.bottom-nav');
 
 let selectedTime = '25 minutes';
 
@@ -11,7 +12,10 @@ function showScreen(name) {
   screens.forEach((screen) => {
     screen.classList.toggle('is-active', screen.dataset.screen === name);
   });
+  if (bottomNav) bottomNav.classList.toggle('is-hidden', name === 'welcome');
 }
+
+showScreen('welcome');
 
 function setSelectedTime(time) {
   selectedTime = time;
