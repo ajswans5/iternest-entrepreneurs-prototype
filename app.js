@@ -2,7 +2,7 @@ const STORAGE_KEY = "iternest_entrepreneurs_state_v1";
 
 const screens = document.querySelectorAll(".screen");
 const bottomNav = document.querySelector(".bottom-nav");
-const coachText = document.querySelector("#coachText");
+const coachBubble = document.querySelector(".coach-bubble");
 const userBubble = document.querySelector("#userBubble");
 const thoughtInput = document.querySelector("#thoughtInput");
 const customTimeInput = document.querySelector("#customTime");
@@ -51,6 +51,7 @@ function showScreen(name) {
 
 function renderAll() {
   renderHome();
+  renderCoach();
   renderNextMove();
   renderProjects();
   renderCoffee();
@@ -84,7 +85,6 @@ function createProject({ type, milestone, targetDate }) {
   };
 
   project.currentRecommendation = recommendNextMove(project, { availableTime: selectedTime });
-  project.whereLeftOff = project.currentRecommendation.title;
   project.recommendations.push(project.currentRecommendation);
 
   appState.projects.push(project);
@@ -425,9 +425,7 @@ function saveMessageFromActiveScreen(sendButton) {
 
   if (screen?.dataset.screen === "help" || screen?.dataset.screen === "coach") {
     if (userBubble) userBubble.textContent = note;
-    if (coachText) {
-      coachText.textContent = `I saved that context. Given ${selectedTime}, the next useful move is still: ${project.currentRecommendation.title}`;
-    }
+    renderCoach();
     showScreen("coach");
   }
 }
@@ -454,6 +452,25 @@ function renderHome() {
   }
 
   if (userBubble) userBubble.textContent = `I have ${selectedTime} today.`;
+}
+
+function renderCoach() {
+  const project = activeProject();
+  if (!project || !coachBubble) return;
+
+  const recommendation = project.currentRecommendation ?? recommendNextMove(project, { availableTime: selectedTime });
+  project.currentRecommendation = recommendation;
+
+  coachBubble.innerHTML = `
+    <p>With ${escapeHtml(selectedTime)}, here's the next useful move.</p>
+    <p><strong>Project:</strong> ${escapeHtml(projectTypeLabel(project.type))}</p>
+    <p><strong>Milestone:</strong> ${escapeHtml(project.milestone)}</p>
+    <p><strong>Where you left off:</strong> ${escapeHtml(project.whereLeftOff)}</p>
+    <p><strong>Action:</strong><br>${escapeHtml(recommendation.title)}</p>
+    <p><strong>Why this:</strong><br>${escapeHtml(recommendation.summary)}</p>
+    <p><strong>Avoid:</strong><br>${escapeHtml(recommendation.avoid)}</p>
+    <p><strong>Save:</strong><br>${escapeHtml(recommendation.save)}</p>
+  `;
 }
 
 function renderNextMove() {
@@ -545,12 +562,6 @@ function setSelectedTime(time) {
   }
 
   if (userBubble) userBubble.textContent = `I have ${time} today.`;
-  if (coachText && project) {
-    coachText.innerHTML = `
-      With ${escapeHtml(time)}, use where you left off instead of opening the whole project.
-      <br><br>${escapeHtml(project.currentRecommendation.summary)}
-    `;
-  }
   renderAll();
 }
 
@@ -616,13 +627,7 @@ document.addEventListener("click", (event) => {
   if (problemTarget) {
     const diagnosis = diagnoseBlocker(problemTarget.dataset.problem);
     if (userBubble) userBubble.textContent = problemTarget.dataset.problem;
-    if (coachText) {
-      coachText.innerHTML = `
-        I hear this: "${escapeHtml(problemTarget.dataset.problem)}."
-        <br><br>This looks like <strong>${escapeHtml(diagnosis.blockerType)}</strong>.
-        <br><br>${escapeHtml(diagnosis.recommendation)}
-      `;
-    }
+    renderCoach();
     showScreen("coach");
     return;
   }
@@ -672,11 +677,9 @@ function updateCoachFromHomeContext() {
 
   if (thought) {
     if (userBubble) userBubble.textContent = `I have ${selectedTime}. ${thought}`;
-    if (coachText) {
-      coachText.textContent = `Given ${selectedTime}, ${project.milestone}, and where you left off, the next useful move is: ${project.currentRecommendation.title}`;
-    }
     saveCoffee(project, "Coffee", thought);
     saveState();
+    renderCoach();
   }
 }
 
@@ -702,7 +705,7 @@ function normalizeProject(project) {
     name: project.name ?? projectTypeLabel(project.type ?? "other"),
     milestone: project.milestone ?? defaultMilestone(project.type ?? "other"),
     targetDate: project.targetDate ?? "",
-    whereLeftOff: project.whereLeftOff ?? "Ready to begin.",
+    whereLeftOff: normalizeStartingPoint(project),
     milestoneHealth: project.milestoneHealth ?? "on-track",
     progress: Array.isArray(project.progress) ? project.progress : [],
     recommendations: Array.isArray(project.recommendations) ? project.recommendations : [],
@@ -722,6 +725,22 @@ function normalizeProject(project) {
   }
 
   return normalized;
+}
+
+function normalizeStartingPoint(project) {
+  const whereLeftOff = project.whereLeftOff ?? "Ready to begin.";
+  const hasRealProgress = Array.isArray(project.progress) && project.progress.length > 0;
+  const hasSavedMemory = Boolean(
+    project.memory?.whiteboard?.length ||
+    project.memory?.blockers?.length ||
+    project.memory?.coffee?.some((item) => item.title !== "First-run setup")
+  );
+
+  if (!hasRealProgress && !hasSavedMemory && whereLeftOff === project.currentRecommendation?.title) {
+    return "Ready to begin.";
+  }
+
+  return whereLeftOff;
 }
 
 function saveState() {
