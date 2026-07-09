@@ -99,14 +99,19 @@ function recommendNextMove(project, options = {}) {
   const minutes = parseMinutes(availableTime);
   const lastProgress = project.progress.at(-1);
   const blocker = project.memory.blockers.at(-1);
-  const template = recommendationTemplate(project.type, minutes, lastProgress, blocker);
-  const title = fillTemplate(template.title, project, blocker);
+  const workUnit = buildWorkUnit(project, minutes, lastProgress, blocker);
 
   return {
     id: `rec-${Date.now()}`,
-    title,
-    summary: fillTemplate(template.summary, project, blocker),
-    steps: template.steps.map((step) => fillTemplate(step, project, blocker)),
+    title: workUnit.action,
+    summary: workUnit.whyThis,
+    steps: [
+      `Action: ${workUnit.action}`,
+      `Avoid: ${workUnit.avoid}`,
+      `Save: ${workUnit.save}`
+    ],
+    avoid: workUnit.avoid,
+    save: workUnit.save,
     estimatedMinutes: minutes,
     confidence: confidenceFor(project, lastProgress, blocker),
     readiness: readinessFor(project, blocker),
@@ -114,80 +119,206 @@ function recommendNextMove(project, options = {}) {
   };
 }
 
-function recommendationTemplate(type, minutes, lastProgress, blocker) {
+function buildWorkUnit(project, minutes, lastProgress, blocker) {
+  const context = projectContextText(project);
+
   if (blocker || lastProgress?.status === "stuck") {
     return {
-      title: "Name the blocker and make one smaller move.",
-      summary: "This is not a time problem. IterNest should reduce the blocker before asking you to push harder.",
-      steps: [
-        "Write the blocker in one plain sentence.",
-        "Choose the smallest part of {milestone} that can move without solving the whole problem.",
-        "Save the result so tomorrow starts from the clearer place."
-      ]
+      action: "Write the blocker in one sentence, then choose one smaller move.",
+      whyThis: `This protects ${project.milestone} by turning the stuck point into something you can act on within ${minutes} minutes.`,
+      avoid: "Do not reopen the whole project or try to solve every connected issue right now.",
+      save: "Save the blocker, the smaller move you chose, and where future-you should restart."
     };
   }
 
-  const short = minutes <= 15;
-  const medium = minutes <= 45;
+  const action = actionFor(project.type, context, minutes);
+  return {
+    action,
+    whyThis: `This is the smallest useful step toward ${project.milestone} that fits the time you have.`,
+    avoid: avoidFor(project.type, minutes),
+    save: saveFor(project.type, context)
+  };
+}
 
-  const templates = {
-    app: {
-      title: short ? "Tighten one app decision." : medium ? "Shape one usable app path." : "Build the next usable app slice.",
-      summary: "Use the time to move one part of the product closer to the milestone instead of opening the whole app.",
-      steps: [
-        "Pick the one screen or flow that affects {milestone}.",
-        "Decide what must be true for that piece to feel usable.",
-        "Make or save the smallest change that moves that flow forward."
-      ]
-    },
-    book: {
-      title: short ? "Clarify the next book section." : medium ? "Draft one rough book section." : "Move one chapter meaningfully forward.",
-      summary: "Use the time to create usable pages or structure instead of rethinking the whole book.",
-      steps: [
-        "Choose the scene, chapter, or argument closest to {milestone}.",
-        "Write a rough version without polishing.",
-        "Save the next sentence or section future-you should start with."
-      ]
-    },
-    business: {
-      title: short ? "Clarify one offer decision." : medium ? "Write one customer-facing offer." : "Test the next business step.",
-      summary: "Use the time to turn the business milestone into one customer-facing move.",
-      steps: [
-        "Pick the audience or customer tied to {milestone}.",
-        "Write the offer, message, or next ask in plain language.",
-        "Save what changed and the next person or step to pursue."
-      ]
-    },
-    content: {
-      title: short ? "Pick the next content angle." : medium ? "Draft one useful content piece." : "Create the next publishable content step.",
-      summary: "Use the time to move one piece toward publishing instead of planning the whole channel.",
-      steps: [
-        "Choose the idea closest to {milestone}.",
-        "Draft the hook, outline, or rough version.",
-        "Save the next edit or publishing step."
-      ]
-    },
-    creative: {
-      title: short ? "Clarify the next creative choice." : medium ? "Make one visible creative pass." : "Move the creative project one version forward.",
-      summary: "Use the time to create a visible artifact that makes the next decision easier.",
-      steps: [
-        "Choose the part of the work closest to {milestone}.",
-        "Make one rough version or visible pass.",
-        "Save what still needs deciding."
-      ]
-    },
-    other: {
-      title: short ? "Choose the next clear decision." : medium ? "Make one concrete move." : "Move the project one meaningful step forward.",
-      summary: "Use the time to reduce uncertainty and leave a clear place to continue.",
-      steps: [
-        "Choose the part of {milestone} that feels most ready to move.",
-        "Make one concrete artifact, note, draft, or decision.",
-        "Save where to continue next."
-      ]
-    }
+function projectContextText(project) {
+  const leftOff = project.whereLeftOff && project.whereLeftOff !== "Ready to begin." ? project.whereLeftOff : "";
+  return `${leftOff} ${project.milestone}`.toLowerCase();
+}
+
+function actionFor(type, context, minutes) {
+  const isShort = minutes <= 15;
+  const isMedium = minutes <= 45;
+  const actionSet = actionLibrary(type);
+  const matched = actionSet.find((item) => item.keywords.some((keyword) => context.includes(keyword)));
+
+  if (matched) return isShort ? matched.short : isMedium ? matched.medium : matched.long;
+  return isShort ? actionSet[0].short : isMedium ? actionSet[0].medium : actionSet[0].long;
+}
+
+function actionLibrary(type) {
+  const libraries = {
+    app: [
+      {
+        keywords: ["onboarding", "signup", "sign up", "first run"],
+        short: "Decide the next onboarding screen.",
+        medium: "Finalize the onboarding flow.",
+        long: "Wire the onboarding flow and save what still needs testing."
+      },
+      {
+        keywords: ["dashboard", "home"],
+        short: "Choose the one dashboard section that matters most.",
+        medium: "Decide the dashboard layout.",
+        long: "Build the dashboard layout enough to click through."
+      },
+      {
+        keywords: ["whiteboard", "canvas", "sketch"],
+        short: "Decide the Whiteboard's next visible behavior.",
+        medium: "Wire the Whiteboard screen.",
+        long: "Make the Whiteboard screen save one useful decision."
+      },
+      {
+        keywords: ["flow", "journey", "path"],
+        short: "Name the next screen in the flow.",
+        medium: "Finalize the next user flow.",
+        long: "Build one usable slice of the current flow."
+      }
+    ],
+    book: [
+      {
+        keywords: ["chapter 4", "chapter four"],
+        short: "Outline Chapter 4.",
+        medium: "Draft the first rough pass of Chapter 4.",
+        long: "Write Chapter 4 until the next natural stopping point."
+      },
+      {
+        keywords: ["chapter"],
+        short: "Outline the next chapter.",
+        medium: "Draft one chapter section.",
+        long: "Move one chapter to a complete rough version."
+      },
+      {
+        keywords: ["scene"],
+        short: "Choose what the scene must accomplish.",
+        medium: "Draft one scene.",
+        long: "Draft one scene and mark the next scene's starting point."
+      },
+      {
+        keywords: ["opening", "paragraph", "intro"],
+        short: "Rewrite the opening paragraph.",
+        medium: "Rewrite the opening page.",
+        long: "Revise the opening section and save the next edit."
+      }
+    ],
+    business: [
+      {
+        keywords: ["email", "customer", "client"],
+        short: "Write one customer email.",
+        medium: "Write and refine one customer email.",
+        long: "Write the customer email and list who should receive it first."
+      },
+      {
+        keywords: ["pricing", "price"],
+        short: "Write the pricing question you need answered.",
+        medium: "Validate pricing with one person.",
+        long: "Prepare the pricing ask and send it to one person."
+      },
+      {
+        keywords: ["landing", "headline", "page"],
+        short: "Draft the landing page headline.",
+        medium: "Draft the landing page headline and subhead.",
+        long: "Draft the first landing page section."
+      },
+      {
+        keywords: ["offer", "launch"],
+        short: "Write the offer in one sentence.",
+        medium: "Draft the first customer-facing offer.",
+        long: "Draft the offer and the next ask."
+      }
+    ],
+    content: [
+      {
+        keywords: ["hook", "hooks"],
+        short: "Write three hooks.",
+        medium: "Write three hooks and choose the strongest one.",
+        long: "Draft the hook, outline, and first section."
+      },
+      {
+        keywords: ["outline"],
+        short: "Write the rough outline.",
+        medium: "Draft one outline.",
+        long: "Draft the outline and the first section."
+      },
+      {
+        keywords: ["record", "video", "section"],
+        short: "Choose the one section to record.",
+        medium: "Record one section.",
+        long: "Record one section and note the next edit."
+      },
+      {
+        keywords: ["post", "publish"],
+        short: "Choose the post angle.",
+        medium: "Draft one post.",
+        long: "Draft one publishable post."
+      }
+    ],
+    creative: [
+      {
+        keywords: ["version", "draft", "pass"],
+        short: "Choose the next visible change.",
+        medium: "Make one visible creative pass.",
+        long: "Create the next rough version."
+      },
+      {
+        keywords: ["decision", "style", "direction"],
+        short: "Choose one creative direction.",
+        medium: "Test one creative direction.",
+        long: "Make one version in the chosen direction."
+      }
+    ],
+    other: [
+      {
+        keywords: ["decision", "unclear", "choose"],
+        short: "Choose the next clear decision.",
+        medium: "Make one concrete decision.",
+        long: "Turn the next decision into one finished artifact."
+      },
+      {
+        keywords: ["draft", "write", "outline"],
+        short: "Write the first rough piece.",
+        medium: "Draft one usable section.",
+        long: "Finish one rough version."
+      }
+    ]
   };
 
-  return templates[type] ?? templates.other;
+  return libraries[type] ?? libraries.other;
+}
+
+function avoidFor(type, minutes) {
+  if (minutes <= 15) return "Do not open a broad planning session; finish one tiny decision or draft.";
+  if (minutes <= 45) return "Do not start anything that requires a full project review.";
+  return {
+    app: "Do not rebuild adjacent flows until this slice works.",
+    book: "Do not revise the whole manuscript; stay with one section.",
+    business: "Do not redesign the whole offer; test one customer-facing move.",
+    content: "Do not plan the whole channel; finish one piece or section.",
+    creative: "Do not chase every variation; make one visible version.",
+    other: "Do not expand the scope; leave with one finished step."
+  }[type] ?? "Do not expand the scope; leave with one finished step.";
+}
+
+function saveFor(type, context) {
+  if (context.includes("stuck") || context.includes("blocker")) {
+    return "Save what blocked you and the first smaller move that became clear.";
+  }
+  return {
+    app: "Save the screen, flow, or decision that should be picked up next.",
+    book: "Save the next sentence, scene, or section future-you should start with.",
+    business: "Save the message, person, or decision that should happen next.",
+    content: "Save the chosen angle, hook, or next edit.",
+    creative: "Save what changed and what still needs deciding.",
+    other: "Save where to continue and what future-you should not have to reconstruct."
+  }[type] ?? "Save where to continue and what future-you should not have to reconstruct.";
 }
 
 function diagnoseBlocker(problem, project = activeProject()) {
