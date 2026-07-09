@@ -8,8 +8,7 @@
 .welcome-mark,
 .brand-mark,
 .avatar,
-.tiny-brand span,
-.completion-mark {
+.tiny-brand span {
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -47,13 +46,4 @@
   border-radius: 999px;
   border: 1px solid rgba(75, 52, 35, .12);
   color: transparent;
-}
-
-.completion-mark {
-  width: 70px;
-  height: 70px;
-  padding: 7px;
-  border-radius: 22px;
-  background: rgba(255, 250, 242, .92) !important;
-  font-size: 0;
 }
