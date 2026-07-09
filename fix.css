@@ -17,11 +17,7 @@
   display: grid;
   place-items: center;
   margin-bottom: 18px;
-  border-radius: 18px;
-  background: rgba(255, 250, 242, .18);
-  border: 1px solid rgba(255, 255, 255, .26);
-  font-size: 1.7rem;
-  backdrop-filter: blur(12px);
+  overflow: hidden;
 }
 .welcome-content h1 { margin: 0 0 10px; font-size: 2.35rem; line-height: .98; letter-spacing: -.05em; }
 .welcome-copy { margin: 0 0 18px; color: rgba(255, 248, 233, .78); line-height: 1.45; }
