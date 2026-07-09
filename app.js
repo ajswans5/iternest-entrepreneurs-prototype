@@ -37,7 +37,33 @@ function setCustomTime() {
   showScreen('coach');
 }
 
+function saveProgress(status) {
+  document.querySelectorAll('[data-progress]').forEach((button) => {
+    button.classList.toggle('is-selected', button.dataset.progress === status);
+  });
+
+  const statusText = {
+    done: 'Done — pick up with the next useful move.',
+    partial: 'Partly done — pick up where the last session paused.',
+    stuck: 'Stuck — diagnose the blocker before choosing the next move.'
+  }[status];
+
+  const continueCard = document.querySelector('.continue-card');
+  if (continueCard) {
+    continueCard.innerHTML = `<p>Where you left off</p><strong>${statusText}</strong><span>Saved from your last Next Move session.</span>`;
+  }
+
+  const trackCard = document.querySelector('.track-card strong');
+  if (trackCard) trackCard.textContent = status === 'stuck' ? 'Needs attention.' : 'You’re on track.';
+}
+
 document.addEventListener('click', (event) => {
+  const progressTarget = event.target.closest('[data-progress]');
+  if (progressTarget) {
+    saveProgress(progressTarget.dataset.progress);
+    return;
+  }
+
   const customTimeTarget = event.target.closest('[data-action="custom-time"]');
   if (customTimeTarget) {
     setCustomTime();
