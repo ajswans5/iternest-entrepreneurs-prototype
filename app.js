@@ -1,15 +1,15 @@
 const STORAGE_KEY = "iternest_entrepreneurs_state_v1";
 
-const screens = document.querySelectorAll(".screen");
 const bottomNav = document.querySelector(".bottom-nav");
 const coachBubble = document.querySelector(".coach-bubble");
 const userBubble = document.querySelector("#userBubble");
 const thoughtInput = document.querySelector("#thoughtInput");
 const customTimeInput = document.querySelector("#customTime");
 
-let selectedTime = "25 minutes";
 let selectedProjectType = "app";
+let selectedTime = "25 minutes";
 const appState = loadState();
+selectedTime = appState.selectedTime || "25 minutes";
 
 initialize();
 
@@ -32,7 +32,17 @@ function hydrateSetupControls() {
     });
   });
 
-  choices[0]?.classList.add("is-selected");
+  resetProjectSetup();
+}
+
+function resetProjectSetup() {
+  selectedProjectType = "app";
+  document.querySelectorAll(".setup-input").forEach((input) => {
+    input.value = "";
+  });
+  document.querySelectorAll(".project-choice-grid button").forEach((button, index) => {
+    button.classList.toggle("is-selected", index === 0);
+  });
 }
 
 function ensureInitialProject() {
@@ -41,11 +51,16 @@ function ensureInitialProject() {
 }
 
 function showScreen(name) {
-  screens.forEach((screen) => {
+  document.querySelectorAll(".screen").forEach((screen) => {
     screen.classList.toggle("is-active", screen.dataset.screen === name);
   });
 
-  if (bottomNav) bottomNav.classList.toggle("is-hidden", name === "welcome");
+  const hideNavOn = new Set(["welcome", "coach", "prototype", "nextmove", "help", "complete"]);
+  if (bottomNav) {
+    bottomNav.classList.toggle("is-hidden", hideNavOn.has(name));
+    bottomNav.classList.toggle("is-light", name !== "home");
+  }
+
   renderAll();
 }
 
@@ -98,17 +113,17 @@ function recommendNextMove(project, options = {}) {
   const availableTime = options.availableTime ?? selectedTime;
   const minutes = parseMinutes(availableTime);
   const lastProgress = project.progress.at(-1);
-  const blocker = project.memory.blockers.at(-1);
+  const blocker = activeBlocker(project);
   const workUnit = buildWorkUnit(project, minutes, lastProgress, blocker);
 
   return {
-    id: `rec-${Date.now()}`,
+    id: `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     title: workUnit.action,
     summary: workUnit.whyThis,
-    steps: [
-      `Action: ${workUnit.action}`,
-      `Avoid: ${workUnit.avoid}`,
-      `Save: ${workUnit.save}`
+    steps: workUnit.steps || [
+      "Open only the part of the project needed for this move.",
+      "Stop when the time box ends or the useful move is complete.",
+      "Leave a restart note so you do not have to reconstruct your thinking."
     ],
     avoid: workUnit.avoid,
     save: workUnit.save,
@@ -119,40 +134,95 @@ function recommendNextMove(project, options = {}) {
   };
 }
 
+function activeBlocker(project) {
+  return [...(project.memory?.blockers || [])].reverse().find((item) => !item.resolvedAt) ?? null;
+}
+
 function buildWorkUnit(project, minutes, lastProgress, blocker) {
   const context = projectContextText(project);
 
   if (blocker || lastProgress?.status === "stuck") {
+    return blockerWorkUnit(project, minutes, blocker, lastProgress);
+  }
+
+  const action = actionFor(project.type, context, minutes, lastProgress);
+  return {
+    action,
+    whyThis: timeSpecificReason(project, minutes),
+    avoid: avoidFor(project.type, minutes),
+    save: saveFor(project.type, context),
+    steps: timeBoxSteps(minutes)
+  };
+}
+
+function blockerWorkUnit(project, minutes, blocker, lastProgress) {
+  const problem = blocker?.problem || lastProgress?.note || "the point where progress stopped";
+  const suggested = blocker?.recommendation || "Name the stuck point and reduce it to one move.";
+
+  if (minutes <= 15) {
     return {
-      action: "Write the blocker in one sentence, then choose one smaller move.",
-      whyThis: `This protects ${project.milestone} by turning the stuck point into something you can act on within ${minutes} minutes.`,
-      avoid: "Do not reopen the whole project or try to solve every connected issue right now.",
-      save: "Save the blocker, the smaller move you chose, and where future-you should restart."
+      action: "Name the exact stuck point and choose the smallest way around it.",
+      whyThis: `A short session is enough to make ${problem.toLowerCase()} concrete without reopening the whole project.`,
+      avoid: "Do not try to solve every connected problem in this session.",
+      save: "Save the one smaller move you chose.",
+      steps: ["Write the stuck point in one sentence.", suggested, "Choose one move that fits the remaining minutes."]
     };
   }
 
-  const action = actionFor(project.type, context, minutes);
+  if (minutes <= 30) {
+    return {
+      action: "Untangle the blocker and complete its first smaller move.",
+      whyThis: `You have enough time to diagnose ${problem.toLowerCase()} and leave with visible progress.`,
+      avoid: "Do not turn the diagnosis into a full project review.",
+      save: "Save what was blocking you, what you tried, and the next restart point.",
+      steps: [suggested, "Complete the first smaller move.", "Record what became clearer."]
+    };
+  }
+
+  if (minutes <= 60) {
+    return {
+      action: "Work through the blocker until one path is usable.",
+      whyThis: `This work block is long enough to move beyond naming ${problem.toLowerCase()} and test a practical path forward.`,
+      avoid: "Do not redesign the entire project around one difficult moment.",
+      save: "Save the usable path, the decision you made, and anything still uncertain.",
+      steps: [suggested, "Test the most realistic option.", "Keep the path that restores momentum."]
+    };
+  }
+
   return {
-    action,
-    whyThis: `This is the smallest useful step toward ${project.milestone} that fits the time you have.`,
-    avoid: avoidFor(project.type, minutes),
-    save: saveFor(project.type, context)
+    action: "Resolve the blocker, test the solution, and reset the next move.",
+    whyThis: `A longer session can address ${problem.toLowerCase()}, verify the solution, and reconnect it to ${project.milestone}.`,
+    avoid: "Do not expand into unrelated improvements after the blocker is resolved.",
+    save: "Save the solution, evidence that it worked, and the next focused action.",
+    steps: [suggested, "Implement or test the chosen solution.", "Confirm the next move before stopping."]
   };
 }
 
 function projectContextText(project) {
   const leftOff = project.whereLeftOff && project.whereLeftOff !== "Ready to begin." ? project.whereLeftOff : "";
-  return `${leftOff} ${project.milestone}`.toLowerCase();
+  const latestWhiteboard = project.memory?.whiteboard?.at(-1)?.note || "";
+  return `${leftOff} ${latestWhiteboard} ${project.milestone}`.toLowerCase();
 }
 
-function actionFor(type, context, minutes) {
-  const isShort = minutes <= 15;
-  const isMedium = minutes <= 45;
-  const actionSet = actionLibrary(type);
-  const matched = actionSet.find((item) => item.keywords.some((keyword) => context.includes(keyword)));
+function timeTier(minutes) {
+  if (minutes <= 15) return "quick";
+  if (minutes <= 30) return "focused";
+  if (minutes <= 60) return "deep";
+  return "extended";
+}
 
-  if (matched) return isShort ? matched.short : isMedium ? matched.medium : matched.long;
-  return isShort ? actionSet[0].short : isMedium ? actionSet[0].medium : actionSet[0].long;
+function actionFor(type, context, minutes, lastProgress) {
+  const actionSet = actionLibrary(type);
+  const matched = actionSet.find((item) => item.keywords.some((keyword) => context.includes(keyword))) ?? actionSet[0];
+  const tier = timeTier(minutes);
+  let action = matched[tier];
+
+  if (lastProgress?.status === "done" && lastProgress.recommendationTitle === action && actionSet.length > 1) {
+    const alternate = actionSet.find((item) => item !== matched);
+    action = alternate?.[tier] ?? action;
+  }
+
+  return action;
 }
 
 function actionLibrary(type) {
@@ -160,133 +230,153 @@ function actionLibrary(type) {
     app: [
       {
         keywords: ["onboarding", "signup", "sign up", "first run"],
-        short: "Decide the next onboarding screen.",
-        medium: "Finalize the onboarding flow.",
-        long: "Wire the onboarding flow and save what still needs testing."
+        quick: "Decide the next onboarding screen.",
+        focused: "Define the content and purpose of the next onboarding screen.",
+        deep: "Finalize the onboarding flow and its screen-to-screen path.",
+        extended: "Wire the onboarding flow and save what still needs testing."
       },
       {
         keywords: ["dashboard", "home"],
-        short: "Choose the one dashboard section that matters most.",
-        medium: "Decide the dashboard layout.",
-        long: "Build the dashboard layout enough to click through."
+        quick: "Choose the one dashboard section that matters most.",
+        focused: "Sketch the dashboard's information order.",
+        deep: "Build a clickable dashboard layout.",
+        extended: "Complete the dashboard flow and test its most important path."
       },
       {
         keywords: ["whiteboard", "canvas", "sketch"],
-        short: "Decide the Whiteboard's next visible behavior.",
-        medium: "Wire the Whiteboard screen.",
-        long: "Make the Whiteboard screen save one useful decision."
+        quick: "Decide the Whiteboard's next visible behavior.",
+        focused: "Define how one Whiteboard idea should be captured.",
+        deep: "Wire the Whiteboard screen and its save behavior.",
+        extended: "Make the Whiteboard save, restore, and display one useful decision."
       },
       {
         keywords: ["flow", "journey", "path"],
-        short: "Name the next screen in the flow.",
-        medium: "Finalize the next user flow.",
-        long: "Build one usable slice of the current flow."
+        quick: "Name the next screen in the flow.",
+        focused: "Map the next three moments in the user flow.",
+        deep: "Build one usable slice of the current flow.",
+        extended: "Complete and test the current flow from entry to saved progress."
       }
     ],
     book: [
       {
         keywords: ["chapter 4", "chapter four"],
-        short: "Outline Chapter 4.",
-        medium: "Draft the first rough pass of Chapter 4.",
-        long: "Write Chapter 4 until the next natural stopping point."
+        quick: "Choose the purpose of Chapter 4.",
+        focused: "Outline Chapter 4's main beats.",
+        deep: "Draft the first substantial section of Chapter 4.",
+        extended: "Write Chapter 4 until the next natural stopping point."
       },
       {
         keywords: ["chapter"],
-        short: "Outline the next chapter.",
-        medium: "Draft one chapter section.",
-        long: "Move one chapter to a complete rough version."
+        quick: "Choose what the next chapter must accomplish.",
+        focused: "Outline the next chapter.",
+        deep: "Draft one complete chapter section.",
+        extended: "Move the chapter to a complete rough version."
       },
       {
         keywords: ["scene"],
-        short: "Choose what the scene must accomplish.",
-        medium: "Draft one scene.",
-        long: "Draft one scene and mark the next scene's starting point."
+        quick: "Choose what the scene must accomplish.",
+        focused: "Outline the scene's turning point.",
+        deep: "Draft the scene through its main change.",
+        extended: "Draft the scene and mark the next scene's starting point."
       },
       {
         keywords: ["opening", "paragraph", "intro"],
-        short: "Rewrite the opening paragraph.",
-        medium: "Rewrite the opening page.",
-        long: "Revise the opening section and save the next edit."
+        quick: "Choose the opening's clearest promise.",
+        focused: "Rewrite the opening paragraph.",
+        deep: "Rewrite the opening page.",
+        extended: "Revise the opening section and save the next edit."
       }
     ],
     business: [
       {
         keywords: ["email", "customer", "client"],
-        short: "Write one customer email.",
-        medium: "Write and refine one customer email.",
-        long: "Write the customer email and list who should receive it first."
+        quick: "Write the core sentence of one customer email.",
+        focused: "Draft one customer email.",
+        deep: "Write and refine one customer email.",
+        extended: "Finish the email and prepare the first recipient list."
       },
       {
         keywords: ["pricing", "price"],
-        short: "Write the pricing question you need answered.",
-        medium: "Validate pricing with one person.",
-        long: "Prepare the pricing ask and send it to one person."
+        quick: "Write the pricing question you need answered.",
+        focused: "Draft one pricing test or customer question.",
+        deep: "Validate pricing with one person or one evidence source.",
+        extended: "Prepare the pricing ask, send it, and save what to compare."
       },
       {
         keywords: ["landing", "headline", "page"],
-        short: "Draft the landing page headline.",
-        medium: "Draft the landing page headline and subhead.",
-        long: "Draft the first landing page section."
+        quick: "Draft the landing page's main promise.",
+        focused: "Draft the headline and subhead.",
+        deep: "Draft the first landing-page section.",
+        extended: "Build the first complete landing-page pass."
       },
       {
         keywords: ["offer", "launch"],
-        short: "Write the offer in one sentence.",
-        medium: "Draft the first customer-facing offer.",
-        long: "Draft the offer and the next ask."
+        quick: "Write the offer in one sentence.",
+        focused: "Define the offer, audience, and next ask.",
+        deep: "Draft the first customer-facing offer.",
+        extended: "Finish the offer and prepare it for one real test."
       }
     ],
     content: [
       {
         keywords: ["hook", "hooks"],
-        short: "Write three hooks.",
-        medium: "Write three hooks and choose the strongest one.",
-        long: "Draft the hook, outline, and first section."
+        quick: "Write three opening ideas.",
+        focused: "Write five openings and choose the strongest one.",
+        deep: "Draft the opening, outline, and first section.",
+        extended: "Create a complete rough piece from opening through call to action."
       },
       {
         keywords: ["outline"],
-        short: "Write the rough outline.",
-        medium: "Draft one outline.",
-        long: "Draft the outline and the first section."
+        quick: "Write the three essential points.",
+        focused: "Draft one usable outline.",
+        deep: "Draft the outline and first section.",
+        extended: "Turn the outline into a complete rough piece."
       },
       {
         keywords: ["record", "video", "section"],
-        short: "Choose the one section to record.",
-        medium: "Record one section.",
-        long: "Record one section and note the next edit."
+        quick: "Choose the one section to record.",
+        focused: "Prepare and rehearse one section.",
+        deep: "Record one complete section.",
+        extended: "Record the piece and note the next edit."
       },
       {
         keywords: ["post", "publish"],
-        short: "Choose the post angle.",
-        medium: "Draft one post.",
-        long: "Draft one publishable post."
+        quick: "Choose the post angle.",
+        focused: "Draft one post.",
+        deep: "Draft and revise one publishable post.",
+        extended: "Finish, format, and prepare one post to publish."
       }
     ],
     creative: [
       {
         keywords: ["version", "draft", "pass"],
-        short: "Choose the next visible change.",
-        medium: "Make one visible creative pass.",
-        long: "Create the next rough version."
+        quick: "Choose the next visible change.",
+        focused: "Make one focused creative pass.",
+        deep: "Create the next rough version.",
+        extended: "Complete a version and compare it against the intended direction."
       },
       {
         keywords: ["decision", "style", "direction"],
-        short: "Choose one creative direction.",
-        medium: "Test one creative direction.",
-        long: "Make one version in the chosen direction."
+        quick: "Choose one creative direction to test.",
+        focused: "Make a small test in one direction.",
+        deep: "Build one full pass in the chosen direction.",
+        extended: "Complete, review, and refine one version in that direction."
       }
     ],
     other: [
       {
         keywords: ["decision", "unclear", "choose"],
-        short: "Choose the next clear decision.",
-        medium: "Make one concrete decision.",
-        long: "Turn the next decision into one finished artifact."
+        quick: "Name the next clear decision.",
+        focused: "Make one concrete decision and record why.",
+        deep: "Turn the decision into one usable artifact.",
+        extended: "Complete the artifact and define the next decision."
       },
       {
         keywords: ["draft", "write", "outline"],
-        short: "Write the first rough piece.",
-        medium: "Draft one usable section.",
-        long: "Finish one rough version."
+        quick: "Write the first rough piece.",
+        focused: "Draft one usable section.",
+        deep: "Finish one rough version.",
+        extended: "Complete and review the rough version."
       }
     ]
   };
@@ -294,9 +384,24 @@ function actionLibrary(type) {
   return libraries[type] ?? libraries.other;
 }
 
+function timeSpecificReason(project, minutes) {
+  if (minutes <= 15) return `This is a small, finishable decision that moves ${project.milestone} without opening a larger work session.`;
+  if (minutes <= 30) return `This uses a focused half-hour to create visible progress toward ${project.milestone}.`;
+  if (minutes <= 60) return `This gives you enough room to produce a usable piece of ${project.milestone}, not merely plan it.`;
+  return `This longer block can complete and test a meaningful slice of ${project.milestone} while preserving a clear restart point.`;
+}
+
+function timeBoxSteps(minutes) {
+  if (minutes <= 15) return ["Open only what you need.", "Make the one decision or tiny draft.", "Write one sentence about where to restart."];
+  if (minutes <= 30) return ["Spend the first few minutes confirming the outcome.", "Use most of the session to produce the work.", "Save the next natural move before stopping."];
+  if (minutes <= 60) return ["Define what a usable result looks like.", "Build the result without widening the scope.", "Review it once and save what remains."];
+  return ["Choose the complete slice you can finish.", "Build and test that slice.", "Record the result, remaining uncertainty, and next move."];
+}
+
 function avoidFor(type, minutes) {
   if (minutes <= 15) return "Do not open a broad planning session; finish one tiny decision or draft.";
-  if (minutes <= 45) return "Do not start anything that requires a full project review.";
+  if (minutes <= 30) return "Do not spend the whole session reorganizing or rereading the project.";
+  if (minutes <= 60) return "Do not widen the scope after you have chosen the usable result for this session.";
   return {
     app: "Do not rebuild adjacent flows until this slice works.",
     book: "Do not revise the whole manuscript; stay with one section.",
@@ -315,7 +420,7 @@ function saveFor(type, context) {
     app: "Save the screen, flow, or decision that should be picked up next.",
     book: "Save the next sentence, scene, or section future-you should start with.",
     business: "Save the message, person, or decision that should happen next.",
-    content: "Save the chosen angle, hook, or next edit.",
+    content: "Save the chosen angle, opening, or next edit.",
     creative: "Save what changed and what still needs deciding.",
     other: "Save where to continue and what future-you should not have to reconstruct."
   }[type] ?? "Save where to continue and what future-you should not have to reconstruct.";
@@ -348,19 +453,27 @@ function diagnoseBlocker(problem, project = activeProject()) {
     problem,
     blockerType,
     recommendation,
+    resolvedAt: null,
     createdAt: new Date().toISOString()
   };
 
   if (project) {
     project.memory.blockers.push(diagnosis);
     project.milestoneHealth = "needs-attention";
-    project.currentRecommendation = recommendNextMove(project, { availableTime: selectedTime });
-    project.recommendations.push(project.currentRecommendation);
+    project.whereLeftOff = problem;
+    regenerateRecommendation(project);
     saveCoffee(project, "Need Help", `${blockerType}: ${recommendation}`);
     saveState();
   }
 
   return diagnosis;
+}
+
+function resolveActiveBlockers(project) {
+  const resolvedAt = new Date().toISOString();
+  project.memory.blockers.forEach((blocker) => {
+    if (!blocker.resolvedAt) blocker.resolvedAt = resolvedAt;
+  });
 }
 
 function saveProgress(status) {
@@ -372,24 +485,46 @@ function saveProgress(status) {
   });
 
   const note = document.querySelector(".progress-note")?.value.trim() || "";
+  const completedAction = project.currentRecommendation?.title ?? "Your focused work session";
   const record = {
     id: `progress-${Date.now()}`,
     status,
     note,
-    recommendationTitle: project.currentRecommendation?.title ?? "",
+    recommendationTitle: completedAction,
     createdAt: new Date().toISOString()
   };
 
   project.progress.push(record);
-  project.whereLeftOff = progressLeftOff(record, project);
-  project.milestoneHealth = status === "stuck" ? "needs-attention" : status === "partial" ? "watch" : "on-track";
-  project.currentRecommendation = recommendNextMove(project, { availableTime: selectedTime });
-  project.recommendations.push(project.currentRecommendation);
-  project.updatedAt = new Date().toISOString();
 
+  if (status === "done") {
+    resolveActiveBlockers(project);
+    project.milestoneHealth = "on-track";
+    project.whereLeftOff = note || `Completed: ${completedAction}`;
+  } else if (status === "partial") {
+    project.milestoneHealth = "watch";
+    project.whereLeftOff = note || `Continue: ${completedAction}`;
+  } else {
+    project.milestoneHealth = "needs-attention";
+    project.whereLeftOff = note || `Stuck while working on: ${completedAction}`;
+  }
+
+  regenerateRecommendation(project);
+  const resumePoint = project.currentRecommendation?.title || project.whereLeftOff;
+  if (status === "done") project.whereLeftOff = `Next: ${resumePoint}`;
+
+  project.updatedAt = new Date().toISOString();
   saveCoffee(project, "Progress saved", `${progressStatusLabel(status)} ${note}`.trim());
   saveState();
   renderAll();
+
+  document.dispatchEvent(new CustomEvent("iternest:progress-saved", {
+    detail: {
+      status,
+      completedAction,
+      resumePoint,
+      milestoneStatus: milestoneHealthCopy(project).title
+    }
+  }));
 }
 
 function saveWhiteboard() {
@@ -402,8 +537,9 @@ function saveWhiteboard() {
     note,
     createdAt: new Date().toISOString()
   });
-  project.whereLeftOff = "Whiteboard";
+  project.whereLeftOff = note;
   project.updatedAt = new Date().toISOString();
+  regenerateRecommendation(project);
   saveCoffee(project, "Whiteboard", note);
   saveState();
   renderAll();
@@ -420,14 +556,19 @@ function saveMessageFromActiveScreen(sendButton) {
   project.whereLeftOff = note;
   project.updatedAt = new Date().toISOString();
   input.value = "";
+  regenerateRecommendation(project);
   saveState();
   renderAll();
 
   if (screen?.dataset.screen === "help" || screen?.dataset.screen === "coach") {
     if (userBubble) userBubble.textContent = note;
-    renderCoach();
     showScreen("coach");
   }
+}
+
+function regenerateRecommendation(project, time = selectedTime) {
+  project.currentRecommendation = recommendNextMove(project, { availableTime: time });
+  project.recommendations.push(project.currentRecommendation);
 }
 
 function renderHome() {
@@ -451,7 +592,9 @@ function renderHome() {
     `;
   }
 
-  if (userBubble) userBubble.textContent = `I have ${selectedTime} today.`;
+  document.querySelectorAll("[data-time]").forEach((button) => {
+    button.classList.toggle("is-selected", button.dataset.time === selectedTime);
+  });
 }
 
 function renderCoach() {
@@ -465,7 +608,7 @@ function renderCoach() {
     <p>With ${escapeHtml(selectedTime)}, here's the next useful move.</p>
     <p><strong>Project:</strong> ${escapeHtml(projectTypeLabel(project.type))}</p>
     <p><strong>Milestone:</strong> ${escapeHtml(project.milestone)}</p>
-    <p><strong>Where you left off:</strong> ${escapeHtml(project.whereLeftOff)}</p>
+    <p><strong>Starting point:</strong> ${escapeHtml(project.whereLeftOff)}</p>
     <p><strong>Action:</strong><br>${escapeHtml(recommendation.title)}</p>
     <p><strong>Why this:</strong><br>${escapeHtml(recommendation.summary)}</p>
     <p><strong>Avoid:</strong><br>${escapeHtml(recommendation.avoid)}</p>
@@ -519,13 +662,13 @@ function renderCoffee() {
   const items = project.memory.coffee.slice(-8).toReversed();
   list.innerHTML = items.length
     ? items.map((item) => `
-      <button>
+      <article class="history-item">
         <strong>${escapeHtml(item.title)}</strong>
         <span>${escapeHtml(item.detail)}</span>
         <em>${relativeDay(item.createdAt)}</em>
-      </button>
+      </article>
     `).join("")
-    : `<button><strong>No coffee history yet</strong><span>Conversations and saved decisions will appear here.</span><em>Today</em></button>`;
+    : `<article class="history-item"><strong>No coffee history yet</strong><span>Conversations and saved decisions will appear here.</span><em>Today</em></article>`;
 }
 
 function renderWhiteboard() {
@@ -550,16 +693,15 @@ function saveCoffee(project, title, detail) {
 
 function setSelectedTime(time) {
   selectedTime = time;
+  appState.selectedTime = time;
+
   document.querySelectorAll("[data-time]").forEach((button) => {
     button.classList.toggle("is-selected", button.dataset.time === time);
   });
 
   const project = activeProject();
-  if (project) {
-    project.currentRecommendation = recommendNextMove(project, { availableTime: time });
-    project.recommendations.push(project.currentRecommendation);
-    saveState();
-  }
+  if (project) regenerateRecommendation(project, time);
+  saveState();
 
   if (userBubble) userBubble.textContent = `I have ${time} today.`;
   renderAll();
@@ -569,8 +711,22 @@ function setCustomTime() {
   const raw = customTimeInput?.value.trim();
   if (!raw) return;
   const time = /minute|min|hour|hr/i.test(raw) ? raw : `${raw} minutes`;
+  const thought = applyHomeContext();
   setSelectedTime(time);
+  if (thought && userBubble) userBubble.textContent = `I have ${selectedTime}. ${thought}`;
   showScreen("coach");
+}
+
+function applyHomeContext() {
+  const project = activeProject();
+  const thought = thoughtInput?.value.trim();
+  if (!project || !thought) return "";
+
+  const alreadySaved = project.whereLeftOff === thought;
+  project.whereLeftOff = thought;
+  project.updatedAt = new Date().toISOString();
+  if (!alreadySaved) saveCoffee(project, "Current context", thought);
+  return thought;
 }
 
 document.addEventListener("click", (event) => {
@@ -600,6 +756,7 @@ document.addEventListener("click", (event) => {
 
   const newProjectTarget = event.target.closest(".new-project-button");
   if (newProjectTarget) {
+    resetProjectSetup();
     showScreen("welcome");
     return;
   }
@@ -618,16 +775,17 @@ document.addEventListener("click", (event) => {
 
   const timeTarget = event.target.closest("[data-time]");
   if (timeTarget) {
+    const thought = applyHomeContext();
     setSelectedTime(timeTarget.dataset.time);
+    if (thought && userBubble) userBubble.textContent = `I have ${selectedTime}. ${thought}`;
     showScreen("coach");
     return;
   }
 
   const problemTarget = event.target.closest("[data-problem]");
   if (problemTarget) {
-    const diagnosis = diagnoseBlocker(problemTarget.dataset.problem);
+    diagnoseBlocker(problemTarget.dataset.problem);
     if (userBubble) userBubble.textContent = problemTarget.dataset.problem;
-    renderCoach();
     showScreen("coach");
     return;
   }
@@ -672,29 +830,28 @@ document.addEventListener("click", (event) => {
 
 function updateCoachFromHomeContext() {
   const project = activeProject();
-  const thought = thoughtInput?.value.trim();
-  if (!project) return;
+  const thought = applyHomeContext();
+  if (!project || !thought) return;
 
-  if (thought) {
-    if (userBubble) userBubble.textContent = `I have ${selectedTime}. ${thought}`;
-    saveCoffee(project, "Coffee", thought);
-    saveState();
-    renderCoach();
-  }
+  if (userBubble) userBubble.textContent = `I have ${selectedTime}. ${thought}`;
+  regenerateRecommendation(project);
+  saveState();
+  renderAll();
 }
 
 function loadState() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { activeProjectId: null, projects: [] };
+    if (!raw) return { activeProjectId: null, projects: [], selectedTime: "25 minutes" };
     const parsed = JSON.parse(raw);
     const projects = Array.isArray(parsed.projects) ? parsed.projects.map(normalizeProject) : [];
     return {
       activeProjectId: projects.some((project) => project.id === parsed.activeProjectId) ? parsed.activeProjectId : projects[0]?.id ?? null,
-      projects
+      projects,
+      selectedTime: parsed.selectedTime || "25 minutes"
     };
   } catch {
-    return { activeProjectId: null, projects: [] };
+    return { activeProjectId: null, projects: [], selectedTime: "25 minutes" };
   }
 }
 
@@ -712,7 +869,9 @@ function normalizeProject(project) {
     memory: {
       whiteboard: Array.isArray(project.memory?.whiteboard) ? project.memory.whiteboard : [],
       decisions: Array.isArray(project.memory?.decisions) ? project.memory.decisions : [],
-      blockers: Array.isArray(project.memory?.blockers) ? project.memory.blockers : [],
+      blockers: Array.isArray(project.memory?.blockers)
+        ? project.memory.blockers.map((blocker) => ({ ...blocker, resolvedAt: blocker.resolvedAt ?? null }))
+        : [],
       coffee: Array.isArray(project.memory?.coffee) ? project.memory.coffee : []
     },
     currentRecommendation: project.currentRecommendation ?? null,
@@ -721,7 +880,7 @@ function normalizeProject(project) {
   };
 
   if (!normalized.currentRecommendation) {
-    normalized.currentRecommendation = recommendNextMove(normalized, { availableTime: selectedTime });
+    normalized.currentRecommendation = recommendNextMove(normalized, { availableTime: selectedTime || "25 minutes" });
   }
 
   return normalized;
@@ -744,6 +903,7 @@ function normalizeStartingPoint(project) {
 }
 
 function saveState() {
+  appState.selectedTime = selectedTime;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
 }
 
@@ -751,13 +911,6 @@ function parseMinutes(value) {
   const lower = String(value ?? "").toLowerCase();
   const number = Number(lower.match(/\d+/)?.[0] ?? 25);
   return lower.includes("hour") || lower.includes("hr") ? number * 60 : number;
-}
-
-function fillTemplate(value, project, blocker) {
-  return value
-    .replaceAll("{milestone}", project.milestone)
-    .replaceAll("{project}", project.name)
-    .replaceAll("{blocker}", blocker?.blockerType ?? "the current blocker");
 }
 
 function confidenceFor(project, lastProgress, blocker) {
@@ -776,25 +929,19 @@ function milestoneHealthCopy(project) {
   if (project.milestoneHealth === "needs-attention") {
     return {
       title: "Needs attention.",
-      detail: "The latest blocker should be diagnosed before pushing the milestone forward."
+      detail: "The latest stuck point should be reduced before pushing the milestone forward."
     };
   }
   if (project.milestoneHealth === "watch") {
     return {
       title: "Still moving.",
-      detail: "The milestone is active, but the next session should pick up from partial progress."
+      detail: "The milestone is active, and the next session will pick up from partial progress."
     };
   }
   return {
     title: "You're on track.",
     detail: `${project.milestone} still looks achievable if we take the next useful step.`
   };
-}
-
-function progressLeftOff(record, project) {
-  if (record.status === "done") return project.currentRecommendation?.title ?? "Next move completed.";
-  if (record.status === "partial") return record.note || "Partly done. Pick up from the last stopping point.";
-  return record.note || "Stuck. Diagnose the blocker before choosing the next move.";
 }
 
 function progressStatusLabel(status) {
