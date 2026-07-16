@@ -11,14 +11,7 @@
   color: #fff8e9;
   overflow-y: auto;
 }
-.welcome-mark {
-  width: 56px;
-  height: 56px;
-  display: grid;
-  place-items: center;
-  margin-bottom: 18px;
-  overflow: hidden;
-}
+.welcome-mark { width: 56px; height: 56px; display: grid; place-items: center; margin-bottom: 18px; overflow: hidden; }
 .welcome-content h1 { margin: 0 0 10px; font-size: 2.35rem; line-height: .98; letter-spacing: -.05em; }
 .welcome-copy { margin: 0 0 18px; color: rgba(255, 248, 233, .78); line-height: 1.45; }
 .setup-card { padding: 16px; border-radius: 24px; background: rgba(255, 250, 242, .16); border: 1px solid rgba(255, 255, 255, .24); backdrop-filter: blur(16px); }
@@ -37,8 +30,8 @@
 .track-card span { display: block; color: rgba(247, 255, 233, .78); font-size: .86rem; line-height: 1.32; }
 .continue-card { margin: 0 0 14px; padding: 14px 16px; border-radius: 18px; background: rgba(255, 250, 242, .18); border: 1px solid rgba(255,255,255,.26); backdrop-filter: blur(14px); color: #fff8e9; }
 .continue-card p { margin: 0 0 4px; color: rgba(255,247,232,.72); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
-.continue-card strong { display:block; font-size: 1rem; margin-bottom: 2px; }
-.continue-card span { display:block; color: rgba(255,247,232,.78); font-size: .88rem; line-height: 1.35; }
+.continue-card strong { display: block; font-size: 1rem; margin-bottom: 2px; }
+.continue-card span { display: block; color: rgba(255,247,232,.78); font-size: .88rem; line-height: 1.35; }
 .projects-content { padding: 0 22px 130px; overflow-y: auto; height: calc(100% - 90px); }
 .project-list { display: grid; gap: 10px; margin: 16px 0; }
 .project-card { width: 100%; display: grid; gap: 10px; padding: 15px; border-radius: 20px; background: #fffaf2; border: 1px solid #e3d8c9; text-align: left; color: #33261f; }
@@ -65,12 +58,42 @@
 .screen-home .or-divider { display: none; }
 .idea-box { min-height: 170px; }
 .memory-note { margin: 14px 0 0; padding: 12px 14px; border-radius: 14px; background: #f4ecdd; color: #6d5847; font-size: .92rem; line-height: 1.4; }
-.screen-home .bottom-nav { bottom: calc(16px + env(safe-area-inset-bottom)); }
-.bottom-nav.is-hidden { display: none; }
+
+/* Screen and navigation cleanup */
+.bottom-nav.is-hidden { display: none !important; }
+.bottom-nav:not(.is-light) {
+  background: rgba(22,15,10,.72) !important;
+  border-color: rgba(255,255,255,.16) !important;
+}
+.bottom-nav:not(.is-light) button { color: #fff5e5 !important; }
+.bottom-nav.is-light {
+  background: rgba(255,250,242,.96) !important;
+  border-color: var(--line) !important;
+}
+.bottom-nav.is-light button { color: var(--muted) !important; }
+.screen:has(.message-bar) { padding-bottom: 104px; }
+.screen-complete { padding-bottom: 28px; }
+
+/* Coffee history is informational, not a fake button. */
+.history-item {
+  position: relative;
+  display: grid;
+  gap: 3px;
+  padding: 15px 70px 15px 16px;
+  background: #fffdf8;
+  border-bottom: 1px solid var(--line);
+}
+.history-item:first-child { background: #f1eadc; }
+.history-item:last-child { border-bottom: 0; }
+.history-item span { color: var(--muted); font-size: .85rem; }
+.history-item em { position: absolute; right: 14px; top: 17px; color: var(--muted); font-style: normal; font-size: .75rem; }
+
 @media (max-width: 480px) {
   .home-content { padding-top: 28px; padding-bottom: 128px; }
   .continue-card { padding: 12px 14px; }
   .custom-time-row input { font-size: .92rem; }
   .welcome-content { padding-top: 38px; }
   .welcome-content h1 { font-size: 2.15rem; }
+  .message-bar { bottom: calc(14px + env(safe-area-inset-bottom)); }
+  .bottom-nav { bottom: calc(12px + env(safe-area-inset-bottom)); }
 }
