@@ -39,7 +39,7 @@
 .continue-card p { margin: 0 0 4px; color: rgba(255,247,232,.72); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; }
 .continue-card strong { display:block; font-size: 1rem; margin-bottom: 2px; }
 .continue-card span { display:block; color: rgba(255,247,232,.78); font-size: .88rem; line-height: 1.35; }
-.projects-content { padding: 0 22px 130px; overflow-y: auto; height: calc(100% - 90px); }
+.projects-content { padding: 0 22px 30px; overflow-y: auto; height: calc(100% - 70px); }
 .project-list { display: grid; gap: 10px; margin: 16px 0; }
 .project-card { width: 100%; display: grid; gap: 10px; padding: 15px; border-radius: 20px; background: #fffaf2; border: 1px solid #e3d8c9; text-align: left; color: #33261f; }
 .project-card.active-project { border-color: #b88b4f; box-shadow: 0 10px 28px rgba(85, 55, 28, .12); }
@@ -66,31 +66,74 @@
 .idea-box { min-height: 170px; }
 .memory-note { margin: 14px 0 0; padding: 12px 14px; border-radius: 14px; background: #f4ecdd; color: #6d5847; font-size: .92rem; line-height: 1.4; }
 
-/* Keep navigation out of the way; Home uses one small chat entry point instead. */
+/* The old task bar is intentionally hidden. */
 .bottom-nav { display: none !important; }
-.screen:has(.message-bar) { padding-bottom: 104px; }
 .screen-complete { padding-bottom: 28px; }
+.screen-chat,
+.screen-prototype,
+.screen-nextmove,
+.screen-projects,
+.screen-coffee,
+.screen-help { padding-bottom: 32px; }
 
-.home-chat-button {
-  position: absolute;
-  right: 20px;
-  bottom: calc(20px + env(safe-area-inset-bottom));
-  z-index: 4;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  padding: 12px 17px;
-  border-radius: 999px;
-  background: rgba(255, 250, 242, .94);
-  color: #3b2314;
-  border: 1px solid rgba(255,255,255,.58);
-  box-shadow: 0 14px 34px rgba(0,0,0,.28);
-  font-weight: 800;
-  backdrop-filter: blur(16px);
+/* Chat launchers stay in normal page flow so they never cover another control. */
+.chat-launcher-row {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  padding: 18px 2px 4px;
 }
-.home-chat-button span { font-size: 1.05rem; }
-.home-chat-button:focus-visible { outline: 3px solid #ffe2b5; outline-offset: 3px; }
+.chat-launcher {
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 54px;
+  padding: 0;
+  border-radius: 50%;
+  background: #ffe2b5;
+  color: #3b2314;
+  border: 1px solid rgba(111,68,41,.2);
+  box-shadow: 0 12px 28px rgba(75,52,35,.22);
+  font-size: 1.35rem;
+}
+.chat-launcher:focus-visible { outline: 3px solid #d19a4a; outline-offset: 3px; }
+.screen-home .chat-launcher-row { padding-top: 22px; }
+
+/* The actual typing field lives only inside the dedicated chat screen. */
+.chat-thread { padding-bottom: 10px; }
+.screen-chat .message-bar.chat-composer {
+  position: static;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  margin-top: 4px;
+}
+
+/* Whiteboard keeps a normal save button instead of a floating message bar. */
+.whiteboard-save {
+  position: static;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  display: block;
+  padding: 0;
+  margin: 12px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.whiteboard-save .send {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 999px;
+  padding: 12px 16px;
+  background: var(--leaf);
+  color: #fff;
+  font-weight: 800;
+}
 
 /* Coffee history is informational, not a fake button. */
 .history-item {
@@ -107,11 +150,10 @@
 .history-item em { position: absolute; right: 14px; top: 17px; color: var(--muted); font-style: normal; font-size: .75rem; }
 
 @media (max-width: 480px) {
-  .home-content { padding-top: 28px; padding-bottom: 150px; }
+  .home-content { padding-top: 28px; padding-bottom: 36px; }
   .continue-card { padding: 12px 14px; }
   .custom-time-row input { font-size: .92rem; }
   .welcome-content { padding-top: 38px; }
   .welcome-content h1 { font-size: 2.15rem; }
-  .message-bar { bottom: calc(14px + env(safe-area-inset-bottom)); }
-  .home-chat-button { right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); }
+  .chat-launcher { width: 52px; height: 52px; flex-basis: 52px; }
 }
