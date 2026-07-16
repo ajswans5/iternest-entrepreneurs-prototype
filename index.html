@@ -60,8 +60,8 @@
           <div class="custom-time-row"><input id="customTime" inputmode="numeric" placeholder="Or type your time, like 12 minutes" /><button data-action="custom-time">Set</button></div>
           <div class="glass-input-card compact"><textarea id="thoughtInput" placeholder="Optional: add context about what you’re trying to move forward."></textarea><button class="round-mic" data-action="voice" aria-label="voice input">🎙️</button></div>
           <button class="need-help-pill" data-go="help">💡 I’m stuck — help me sort it out</button>
+          <div class="chat-launcher-row"><button class="chat-launcher" data-go="coach" aria-label="Open chat with IterNest">💬</button></div>
         </section>
-        <button class="home-chat-button" data-go="coach" aria-label="Message IterNest"><span>💬</span> Message IterNest</button>
       </section>
 
       <section class="screen screen-chat" data-screen="coach">
@@ -76,8 +76,8 @@
             <button data-go="help">💬 I’m stuck — diagnose it</button>
             <button data-go="coffee">🔎 Review recent context</button>
           </div>
+          <div class="message-bar chat-composer"><input placeholder="Message IterNest..." /><button aria-label="Voice input">🎙️</button><button class="send" aria-label="Send message">↑</button></div>
         </div>
-        <footer class="message-bar"><input placeholder="Message IterNest..." /><button>🎙️</button><button class="send">↑</button></footer>
       </section>
 
       <section class="screen screen-prototype" data-screen="prototype">
@@ -87,9 +87,10 @@
           <p class="field-label">Saved project memory</p><p>Home uses where the person left off + available time + milestone health. Need Help diagnoses the blocker, not time.</p><hr />
           <p class="field-label">Show me what’s in your head</p><textarea class="small-textarea idea-box" placeholder="Type, sketch, paste a note, or describe the picture you’re imagining..."></textarea>
           <div class="tool-row"><button>✏️ Sketch</button><button>📝 Type</button><button>🎙️ Voice</button></div>
+          <div class="message-bar whiteboard-save"><button class="send">Save this thought</button></div>
           <p class="memory-note">IterNest saves the useful decisions from this Whiteboard so next time it remembers why you built it this way.</p>
         </section>
-        <footer class="message-bar"><input placeholder="Add a quick note..." /><button>🎙️</button><button class="send">↑</button></footer>
+        <div class="chat-launcher-row"><button class="chat-launcher" data-go="coach" aria-label="Open chat with IterNest">💬</button></div>
       </section>
 
       <section class="screen screen-nextmove" data-screen="nextmove">
@@ -101,7 +102,7 @@
           <textarea class="small-textarea progress-note" placeholder="Optional: what changed, what’s left, or where should IterNest pick up next time?"></textarea>
           <p class="memory-note">Saving progress updates where you left off, the next recommended move, and your milestone health.</p>
         </section>
-        <footer class="message-bar"><input placeholder="Quick progress note..." /><button>🎙️</button><button class="send">↑</button></footer>
+        <div class="chat-launcher-row"><button class="chat-launcher" data-go="coach" aria-label="Open chat with IterNest">💬</button></div>
       </section>
 
       <section class="screen screen-projects" data-screen="projects">
@@ -111,6 +112,7 @@
           <div class="project-list"><button class="project-card active-project" data-go="home"><div><span class="project-status green"></span><strong>IterNest Entrepreneur App</strong><p>Beta milestone: Home + Whiteboard flow</p></div><em>Next: Save progress after focused work</em></button><button class="project-card"><div><span class="project-status yellow"></span><strong>Bounce House Business</strong><p>Milestone needed</p></div><em>Next: choose first launch milestone</em></button><button class="project-card"><div><span class="project-status yellow"></span><strong>Children’s Book</strong><p>Draft project</p></div><em>Next: define current chapter or scene</em></button></div>
           <button class="new-project-button">+ New Project</button>
           <p class="memory-note">Projects are separate nests. Each one keeps its own milestone, saved progress, Coffee history, and next recommended move.</p>
+          <div class="chat-launcher-row"><button class="chat-launcher" data-go="coach" aria-label="Open chat with IterNest">💬</button></div>
         </section>
       </section>
 
@@ -118,12 +120,13 @@
         <header class="plain-header"><button class="icon-back" data-go="home">←</button><strong>☕ Coffee</strong></header>
         <p class="subhead">Your conversations</p>
         <div class="history-list"><button><strong>Projects screen</strong><span>Projects are separate nests with their own progress</span><em>Today</em></button><button><strong>Progress capture</strong><span>Next Move can save done, partial, or stuck</span><em>Today</em></button><button><strong>First-run setup</strong><span>Collects project type, milestone, and optional date</span><em>Today</em></button><button><strong>Different intentions</strong><span>Whiteboard is for thinking; Next Move is for doing</span><em>Today</em></button></div>
+        <div class="chat-launcher-row"><button class="chat-launcher" data-go="coach" aria-label="Open chat with IterNest">💬</button></div>
       </section>
 
       <section class="screen screen-help" data-screen="help">
         <header class="plain-header"><button class="icon-back" data-go="home">←</button><strong>💡 Need Help</strong></header>
         <section class="help-panel"><h2>What feels stuck?</h2><p>This is for diagnosing the blocker, not choosing your available time.</p><div class="help-options"><button data-problem="I don’t know which decision matters most">🧭 I don’t know which decision matters most</button><button data-problem="I’m overexplaining the idea">🧶 I’m overexplaining the idea</button><button data-problem="The screen doesn’t feel right yet">🖼️ The screen doesn’t feel right yet</button><button data-problem="I’m overwhelmed by too many possible next steps">😩 I’m overwhelmed by too many possible next steps</button><button data-problem="I need help turning this into a plan">🚀 I need help turning this into a plan</button></div></section>
-        <footer class="message-bar"><input placeholder="Message IterNest..." /><button>🎙️</button><button class="send">↑</button></footer>
+        <div class="chat-launcher-row"><button class="chat-launcher" data-go="coach" aria-label="Open chat with IterNest">💬</button></div>
       </section>
 
       <nav class="bottom-nav" aria-hidden="true"><button data-go="home">🏠<span>Home</span></button><button data-go="help">💡<span>Need Help</span></button><button data-go="projects">📁<span>Projects</span></button><button data-go="coffee">☕<span>Coffee</span></button></nav>
