@@ -5,9 +5,18 @@ const coachBubble = document.querySelector(".coach-bubble");
 const userBubble = document.querySelector("#userBubble");
 const thoughtInput = document.querySelector("#thoughtInput");
 const customTimeInput = document.querySelector("#customTime");
+const projectStoryInput = document.querySelector("#projectStory");
+const understandingQuestion = document.querySelector("#understandingQuestion");
+const understandingHelp = document.querySelector("#understandingHelp");
+const understandingAnswer = document.querySelector("#understandingAnswer");
+const understandingSummary = document.querySelector("#understandingSummary");
+const timelineEditor = document.querySelector("#timelineEditor");
+const Understanding = window.IterNestUnderstanding;
 
-let selectedProjectType = "app";
+let selectedProjectType = "";
 let selectedTime = "25 minutes";
+let understandingDraft = null;
+let pendingUnderstandingQuestion = null;
 const appState = loadState();
 selectedTime = appState.selectedTime || "25 minutes";
 
@@ -36,12 +45,13 @@ function hydrateSetupControls() {
 }
 
 function resetProjectSetup() {
-  selectedProjectType = "app";
+  selectedProjectType = "";
   document.querySelectorAll(".setup-input").forEach((input) => {
     input.value = "";
   });
+  if (projectStoryInput) projectStoryInput.value = "";
   document.querySelectorAll(".project-choice-grid button").forEach((button, index) => {
-    button.classList.toggle("is-selected", index === 0);
+    button.classList.remove("is-selected");
   });
 }
 
@@ -77,14 +87,16 @@ function activeProject() {
   return appState.projects.find((project) => project.id === appState.activeProjectId) ?? null;
 }
 
-function createProject({ type, milestone, targetDate }) {
+function createProject({ type, milestone, targetDate, understanding }) {
   const now = new Date().toISOString();
+  const projectUnderstanding = Understanding?.normalizeUnderstanding(understanding) ?? null;
   const project = {
     id: `project-${Date.now()}`,
-    type,
-    name: projectTypeLabel(type),
-    milestone: milestone || defaultMilestone(type),
-    targetDate: targetDate || "",
+    type: projectUnderstanding?.projectType ?? type,
+    name: projectUnderstanding?.projectName || projectTypeLabel(type),
+    milestone: projectUnderstanding?.currentMilestone || milestone || defaultMilestone(type),
+    targetDate: projectUnderstanding?.targetDate || targetDate || "",
+    projectUnderstanding,
     whereLeftOff: "Ready to begin.",
     milestoneHealth: "on-track",
     progress: [],
@@ -114,6 +126,31 @@ function recommendNextMove(project, options = {}) {
   const minutes = parseMinutes(availableTime);
   const lastProgress = project.progress.at(-1);
   const blocker = activeBlocker(project);
+  if (project.projectUnderstanding && Understanding) {
+    const recommendation = Understanding.buildRecommendationFromUnderstanding(project.projectUnderstanding, { availableTime });
+    return {
+      id: `rec-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      title: recommendation.action,
+      action: recommendation.action,
+      startHere: recommendation.startHere,
+      summary: recommendation.summary,
+      whyThisComesNext: recommendation.whyThisComesNext,
+      doneWhen: recommendation.doneWhen,
+      steps: [
+        `Start here: ${recommendation.startHere}`,
+        `Done when: ${recommendation.doneWhen}`,
+        `Avoid: ${recommendation.avoid}`,
+        `Save your place: ${recommendation.save}`
+      ],
+      avoid: recommendation.avoid,
+      save: recommendation.save,
+      estimatedMinutes: minutes,
+      confidence: recommendation.confidence,
+      readiness: recommendation.readiness,
+      importantAssumption: recommendation.importantAssumption,
+      createdAt: new Date().toISOString()
+    };
+  }
   const workUnit = buildWorkUnit(project, minutes, lastProgress, blocker);
 
   return {
@@ -495,6 +532,9 @@ function saveProgress(status) {
   };
 
   project.progress.push(record);
+  if (project.projectUnderstanding && Understanding?.applyProgressToUnderstanding) {
+    project.projectUnderstanding = Understanding.applyProgressToUnderstanding(project.projectUnderstanding, record);
+  }
 
   if (status === "done") {
     resolveActiveBlockers(project);
@@ -537,6 +577,15 @@ function saveWhiteboard() {
     note,
     createdAt: new Date().toISOString()
   });
+  if (project.projectUnderstanding) {
+    project.projectUnderstanding.confirmedFacts.push(`Whiteboard note: ${note}`);
+    project.projectUnderstanding.continuity = {
+      ...(project.projectUnderstanding.continuity || {}),
+      whereWorkStopped: "Whiteboard",
+      doNotForget: note
+    };
+    project.projectUnderstanding.updatedAt = new Date().toISOString();
+  }
   project.whereLeftOff = note;
   project.updatedAt = new Date().toISOString();
   regenerateRecommendation(project);
@@ -553,6 +602,15 @@ function saveMessageFromActiveScreen(sendButton) {
   if (!project || !note) return;
 
   saveCoffee(project, "Conversation", note);
+  if (project.projectUnderstanding) {
+    project.projectUnderstanding.confirmedFacts.push(`Conversation note: ${note}`);
+    project.projectUnderstanding.continuity = {
+      ...(project.projectUnderstanding.continuity || {}),
+      whereWorkStopped: note,
+      doNotForget: note
+    };
+    project.projectUnderstanding.updatedAt = new Date().toISOString();
+  }
   project.whereLeftOff = note;
   project.updatedAt = new Date().toISOString();
   input.value = "";
@@ -585,10 +643,12 @@ function renderHome() {
 
   const continueCard = document.querySelector(".continue-card");
   if (continueCard) {
+    const understanding = project.projectUnderstanding;
+    const stage = understanding?.currentStage || "Unknown stage";
     continueCard.innerHTML = `
       <p>Where you left off</p>
       <strong>${escapeHtml(project.whereLeftOff)}</strong>
-      <span>Current milestone: ${escapeHtml(project.milestone)}</span>
+      <span>${escapeHtml(stage)} · ${escapeHtml(project.milestone)}</span>
     `;
   }
 
@@ -603,16 +663,33 @@ function renderCoach() {
 
   const recommendation = project.currentRecommendation ?? recommendNextMove(project, { availableTime: selectedTime });
   project.currentRecommendation = recommendation;
+  const isLowTrust = recommendation.confidence === "Low";
+
+  if (isLowTrust) {
+    coachBubble.innerHTML = `
+      <p>I don't understand enough yet to recommend something I trust.</p>
+      <p><strong>I have one question.</strong><br>${escapeHtml(recommendation.startHere || "Tell me a little more about where this project is right now.")}</p>
+      <p>Let's keep working through it.</p>
+    `;
+    return;
+  }
 
   coachBubble.innerHTML = `
     <p>With ${escapeHtml(selectedTime)}, here's the next useful move.</p>
-    <p><strong>Project:</strong> ${escapeHtml(projectTypeLabel(project.type))}</p>
-    <p><strong>Milestone:</strong> ${escapeHtml(project.milestone)}</p>
-    <p><strong>Starting point:</strong> ${escapeHtml(project.whereLeftOff)}</p>
-    <p><strong>Action:</strong><br>${escapeHtml(recommendation.title)}</p>
-    <p><strong>Why this:</strong><br>${escapeHtml(recommendation.summary)}</p>
-    <p><strong>Avoid:</strong><br>${escapeHtml(recommendation.avoid)}</p>
-    <p><strong>Save:</strong><br>${escapeHtml(recommendation.save)}</p>
+    <p class="focus-label">Action</p>
+    <p><strong>${escapeHtml(recommendation.title)}</strong></p>
+    <p class="focus-label">Start here</p>
+    <p>${escapeHtml(recommendation.startHere || recommendation.steps?.[0] || "Start with the first visible piece.")}</p>
+    <p class="focus-label">Done when</p>
+    <p>${escapeHtml(recommendation.doneWhen || "You have one finished next step.")}</p>
+    <details class="why-details">
+      <summary>Why?</summary>
+      <p>${escapeHtml(recommendation.whyThisComesNext || recommendation.summary)}</p>
+      <p><strong>Avoid:</strong> ${escapeHtml(recommendation.avoid)}</p>
+      <p><strong>Save your place:</strong> ${escapeHtml(recommendation.save)}</p>
+      <p><strong>How sure I am:</strong> ${escapeHtml(recommendation.confidence)}</p>
+      ${recommendation.importantAssumption ? `<p><strong>One thing I am assuming:</strong> ${escapeHtml(recommendation.importantAssumption)}</p>` : ""}
+    </details>
   `;
 }
 
@@ -627,14 +704,18 @@ function renderNextMove() {
   if (title) title.textContent = recommendation.title;
 
   const nextMoveSummary = document.querySelector(".screen-nextmove .work-card > p:not(.field-label)");
-  if (nextMoveSummary) nextMoveSummary.textContent = recommendation.summary;
+  if (nextMoveSummary) nextMoveSummary.textContent = recommendation.startHere || recommendation.summary;
 
   const label = document.querySelector(".screen-nextmove .field-label");
   if (label) label.textContent = `For the next ${recommendation.estimatedMinutes} minutes`;
 
   const steps = document.querySelector(".next-steps");
   if (steps) {
-    steps.innerHTML = recommendation.steps.map((step) => `<li>${escapeHtml(step)}</li>`).join("");
+    const structuredSteps = [
+      `Done when: ${recommendation.doneWhen || "The next useful output exists."}`,
+      `Why: ${recommendation.whyThisComesNext || recommendation.summary}`
+    ];
+    steps.innerHTML = structuredSteps.map((step) => `<li>${escapeHtml(step)}</li>`).join("");
   }
 }
 
@@ -724,9 +805,124 @@ function applyHomeContext() {
 
   const alreadySaved = project.whereLeftOff === thought;
   project.whereLeftOff = thought;
+  if (project.projectUnderstanding) {
+    project.projectUnderstanding.continuity = {
+      ...(project.projectUnderstanding.continuity || {}),
+      whereWorkStopped: thought,
+      doNotForget: thought
+    };
+    project.projectUnderstanding.updatedAt = new Date().toISOString();
+  }
   project.updatedAt = new Date().toISOString();
   if (!alreadySaved) saveCoffee(project, "Current context", thought);
   return thought;
+}
+
+function startUnderstandingFlow() {
+  const story = projectStoryInput?.value.trim() || "";
+  if (!story) {
+    if (projectStoryInput) {
+      projectStoryInput.focus();
+      projectStoryInput.placeholder = "Start with a few sentences about the project, where it is now, and where you want it to go.";
+    }
+    return;
+  }
+
+  understandingDraft = Understanding.createUnderstandingFromStory(story, selectedProjectType);
+  pendingUnderstandingQuestion = Understanding.selectNextQuestion(understandingDraft);
+
+  if (pendingUnderstandingQuestion) {
+    renderUnderstandingQuestion();
+    showScreen("understanding");
+    return;
+  }
+
+  renderUnderstandingConfirmation();
+  showScreen("confirm");
+}
+
+function renderUnderstandingQuestion() {
+  if (!pendingUnderstandingQuestion) return;
+  if (understandingQuestion) understandingQuestion.textContent = pendingUnderstandingQuestion.prompt;
+  if (understandingHelp) understandingHelp.textContent = pendingUnderstandingQuestion.help;
+  if (understandingAnswer) understandingAnswer.value = "";
+}
+
+function answerUnderstandingQuestion(skip = false) {
+  if (!understandingDraft || !pendingUnderstandingQuestion) return;
+  const answer = skip ? "" : understandingAnswer?.value.trim() || "";
+  if (answer) {
+    understandingDraft = Understanding.applyQuestionAnswer(understandingDraft, pendingUnderstandingQuestion.id, answer);
+  }
+  pendingUnderstandingQuestion = null;
+  renderUnderstandingConfirmation();
+  showScreen("confirm");
+}
+
+function renderUnderstandingConfirmation() {
+  if (!understandingDraft || !understandingSummary || !timelineEditor) return;
+  const summary = Understanding.summaryForConfirmation(understandingDraft);
+  understandingSummary.innerHTML = [
+    ["You're making", summary.created],
+    ["You want it to become", summary.intendedOutcome],
+    ["It's for", summary.audience],
+    ["Right now", summary.currentStage],
+    ["Already happened", summary.completedWork],
+    ["Next meaningful step", summary.nextMilestone],
+    ["Timing", summary.targetDate],
+    ["What might make it harder", summary.constraints],
+    ["The path I see", summary.likelyPath]
+  ].map(([label, value]) => `
+    <div class="summary-row">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value || "Unknown")}</strong>
+    </div>
+  `).join("");
+
+  timelineEditor.innerHTML = understandingDraft.projectTimeline.map((stage, index) => `
+    <div class="timeline-stage">
+      <label>
+        <span>Part of the path</span>
+        <input data-stage-name="${index}" value="${escapeHtml(stage.name)}" />
+      </label>
+      <label>
+        <span>What this part needs to produce</span>
+        <textarea data-stage-output="${index}">${escapeHtml(stage.requiredOutput)}</textarea>
+      </label>
+      <select data-stage-status="${index}" aria-label="Status for ${escapeHtml(stage.name)}">
+        ${Understanding.STAGE_STATUSES.map((status) => `<option value="${status}" ${status === stage.status ? "selected" : ""}>${status}</option>`).join("")}
+      </select>
+    </div>
+  `).join("");
+}
+
+function confirmUnderstandingFlow() {
+  if (!understandingDraft) return;
+  const updates = {};
+  document.querySelectorAll("[data-stage-status]").forEach((select) => {
+    const index = select.dataset.stageStatus;
+    updates[index] = {
+      status: select.value,
+      name: document.querySelector(`[data-stage-name="${index}"]`)?.value.trim(),
+      requiredOutput: document.querySelector(`[data-stage-output="${index}"]`)?.value.trim()
+    };
+  });
+  const confirmed = Understanding.confirmUnderstanding(understandingDraft, updates);
+  createProject({
+    type: confirmed.projectType,
+    milestone: confirmed.currentMilestone,
+    targetDate: confirmed.targetDate,
+    understanding: confirmed
+  });
+  understandingDraft = null;
+  pendingUnderstandingQuestion = null;
+  showScreen("home");
+}
+
+function editUnderstandingFlow() {
+  if (!understandingDraft) return;
+  if (projectStoryInput) projectStoryInput.value = understandingDraft.projectDescription;
+  showScreen("welcome");
 }
 
 document.addEventListener("click", (event) => {
@@ -736,13 +932,34 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  const setupTarget = event.target.closest("[data-go='home'].primary-start");
+  const setupTarget = event.target.closest('[data-action="start-understanding"]');
   if (setupTarget) {
     event.preventDefault();
-    const milestone = document.querySelector(".setup-input")?.value.trim();
-    const targetDate = document.querySelectorAll(".setup-input")[1]?.value.trim();
-    createProject({ type: selectedProjectType, milestone, targetDate });
-    showScreen("home");
+    startUnderstandingFlow();
+    return;
+  }
+
+  const answerUnderstandingTarget = event.target.closest('[data-action="answer-understanding"]');
+  if (answerUnderstandingTarget) {
+    answerUnderstandingQuestion(false);
+    return;
+  }
+
+  const skipUnderstandingTarget = event.target.closest('[data-action="skip-understanding"]');
+  if (skipUnderstandingTarget) {
+    answerUnderstandingQuestion(true);
+    return;
+  }
+
+  const confirmUnderstandingTarget = event.target.closest('[data-action="confirm-understanding"]');
+  if (confirmUnderstandingTarget) {
+    confirmUnderstandingFlow();
+    return;
+  }
+
+  const editUnderstandingTarget = event.target.closest('[data-action="edit-understanding"]');
+  if (editUnderstandingTarget) {
+    editUnderstandingFlow();
     return;
   }
 
@@ -757,6 +974,8 @@ document.addEventListener("click", (event) => {
   const newProjectTarget = event.target.closest(".new-project-button");
   if (newProjectTarget) {
     resetProjectSetup();
+    understandingDraft = null;
+    pendingUnderstandingQuestion = null;
     showScreen("welcome");
     return;
   }
@@ -856,12 +1075,14 @@ function loadState() {
 }
 
 function normalizeProject(project) {
+  const migratedUnderstanding = Understanding?.migrateProjectToUnderstanding(project) ?? project.projectUnderstanding ?? null;
   const normalized = {
     id: project.id ?? `project-${Date.now()}`,
-    type: project.type ?? "other",
-    name: project.name ?? projectTypeLabel(project.type ?? "other"),
-    milestone: project.milestone ?? defaultMilestone(project.type ?? "other"),
-    targetDate: project.targetDate ?? "",
+    type: migratedUnderstanding?.projectType ?? project.type ?? "other",
+    name: project.name ?? migratedUnderstanding?.projectName ?? projectTypeLabel(project.type ?? "other"),
+    milestone: project.milestone ?? migratedUnderstanding?.currentMilestone ?? defaultMilestone(project.type ?? "other"),
+    targetDate: project.targetDate ?? migratedUnderstanding?.targetDate ?? "",
+    projectUnderstanding: migratedUnderstanding,
     whereLeftOff: normalizeStartingPoint(project),
     milestoneHealth: project.milestoneHealth ?? "on-track",
     progress: Array.isArray(project.progress) ? project.progress : [],

@@ -16,28 +16,55 @@
         <div class="welcome-glow"></div>
         <section class="welcome-content">
           <div class="welcome-mark"><img class="logo-img" src="assets/iternest-logo.svg" alt="IterNest logo" /></div>
-          <p class="script-greeting">Welcome to IterNest</p>
-          <h1>Turn ideas into progress.</h1>
-          <p class="welcome-copy">I’ll remember where you left off, keep track of your milestone, and help you make the most of the time you have.</p>
+          <p class="script-greeting">Hi, I'm Juniper.</p>
+          <h1>Let's figure this out together.</h1>
+          <p class="welcome-copy">Tell me what you're building. Where are you hoping it goes? What's already happened? Anything making it difficult today?</p>
           <div class="setup-card">
-            <p class="field-label">What are you working toward?</p>
+            <label class="setup-label" for="projectStory">Tell me in your own words</label>
+            <textarea id="projectStory" class="setup-textarea" placeholder="I'm creating a YouTube video for overwhelmed founders. I have the main idea, but not the outline or script. I want to publish it in two weeks."></textarea>
+            <p class="shortcut-label">If it helps, this sounds like...</p>
             <div class="project-choice-grid">
-              <button>📱 Building an app</button>
-              <button>📚 Writing a book</button>
-              <button>🚀 Starting a business</button>
-              <button>🎥 Growing content</button>
-              <button>🎨 Creating something</button>
-              <button>✨ Something else</button>
+              <button>Building an app</button>
+              <button>Writing a book</button>
+              <button>Starting a business</button>
+              <button>Growing content</button>
+              <button>Creating something</button>
+              <button>Something else</button>
             </div>
-            <label class="setup-label">Next milestone</label>
-            <input class="setup-input" placeholder="Launch my beta, finish chapter 1, publish my first video..." />
-            <label class="setup-label">Target date <span>optional</span></label>
-            <input class="setup-input" placeholder="End of July, next Friday, no date yet..." />
-            <button class="primary-start" data-go="home">Start with my dashboard →</button>
+            <button class="primary-start" data-action="start-understanding">Keep going</button>
           </div>
         </section>
       </section>
 
+      <section class="screen screen-understanding" data-screen="understanding">
+        <header class="plain-header"><button class="icon-back" data-go="welcome">Back</button><strong>Juniper</strong></header>
+        <section class="work-card understanding-card">
+          <p class="field-label">I have one question.</p>
+          <h2 id="understandingQuestion">What does finished look like for this project?</h2>
+          <p id="understandingHelp">A short answer is enough.</p>
+          <textarea id="understandingAnswer" class="small-textarea" placeholder="Tell me what would help me understand."></textarea>
+          <div class="understanding-actions">
+            <button data-action="answer-understanding">Answer this</button>
+            <button data-action="skip-understanding">I'm not sure yet</button>
+          </div>
+        </section>
+      </section>
+
+      <section class="screen screen-confirm" data-screen="confirm">
+        <header class="plain-header"><button class="icon-back" data-go="welcome">Back</button><strong>Juniper</strong></header>
+        <section class="work-card understanding-card">
+          <p class="script-greeting">Here's what I think I heard.</p>
+          <div id="understandingSummary" class="understanding-summary"></div>
+          <hr />
+          <p class="field-label">The path I see</p>
+          <div id="timelineEditor" class="timeline-editor"></div>
+          <p class="memory-note">I'll use this only after you say it feels right. You can change it whenever the project changes.</p>
+          <div class="understanding-actions">
+            <button data-action="confirm-understanding">That's right</button>
+            <button data-action="edit-understanding">Let me change something</button>
+          </div>
+        </section>
+      </section>
       <section class="screen screen-home" data-screen="home">
         <div class="cafe-bg"></div>
         <div class="dim-layer"></div>
@@ -132,6 +159,7 @@
       <nav class="bottom-nav" aria-hidden="true"><button data-go="home">🏠<span>Home</span></button><button data-go="help">💡<span>Need Help</span></button><button data-go="projects">📁<span>Projects</span></button><button data-go="coffee">☕<span>Coffee</span></button></nav>
     </section>
   </main>
+  <script src="project-understanding.js"></script>
   <script src="app.js"></script>
   <script src="completion.js"></script>
   <script src="beta-start.js"></script>
