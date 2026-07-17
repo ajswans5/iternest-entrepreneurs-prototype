@@ -25,20 +25,20 @@ Do not redesign the UX unless AJ explicitly asks. Match the approved prototype e
 
 ## Current sprint
 
-Project Understanding v1
+Understanding-First architecture
 
 Goal: replace category-first setup with a project-understanding conversation before IterNest recommends work.
 
-The prototype now asks for the founder's project story first, builds a structured Project Understanding model, asks one high-value clarifying question when needed, shows a "Here's what I understand" confirmation, and saves the confirmed model to local project memory.
+The prototype now asks for the founder's project story first, builds a structured Project Understanding model, asks adaptive domain-specific follow-up questions, shows a "Here's what I think I heard" confirmation, and saves the confirmed model to local project memory before recommendations are unlocked.
 
 ## Deterministic now
 
-- Project type is inferred from simple keywords, with optional shortcuts as examples.
-- Missing information is selected with deterministic readiness rules.
+- Project domain is inferred from simple keywords, with optional shortcuts as examples. Domain strategies currently cover software applications, novels, nonfiction books, marketing projects, businesses, content channels, podcasts, courses, and other projects.
+- Missing information is selected with deterministic discovery rules. Juniper asks one useful question at a time and avoids repeating questions that were already answered.
 - The internal project timeline starts from project-type templates, then preserves founder corrections.
-- Recommendations are generated from the confirmed Project Understanding model and current timeline stage.
+- Recommendations are locked until the founder confirms the reflected project understanding. After confirmation, recommendations are generated from the Project Understanding model, current timeline stage, bottleneck, and available time.
 - Available time changes the size of the recommended work unit, not the logical project order.
-- Existing beta projects are migrated into the new model instead of being discarded.
+- Existing beta projects are migrated into the new model instead of being discarded. Migrated projects keep saved notes, progress, milestones, blockers, and where the user left off, but Juniper asks the founder to confirm the reconstructed understanding before making strong recommendations.
 
 ## Later AI responsibility
 

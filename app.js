@@ -829,7 +829,14 @@ function startUnderstandingFlow() {
   }
 
   understandingDraft = Understanding.createUnderstandingFromStory(story, selectedProjectType);
-  pendingUnderstandingQuestion = Understanding.selectNextQuestion(understandingDraft);
+  moveUnderstandingForward();
+}
+
+function moveUnderstandingForward() {
+  if (!understandingDraft) return;
+  pendingUnderstandingQuestion = Understanding.hasEnoughForReflection?.(understandingDraft)
+    ? null
+    : Understanding.selectNextQuestion(understandingDraft);
 
   if (pendingUnderstandingQuestion) {
     renderUnderstandingQuestion();
@@ -840,7 +847,6 @@ function startUnderstandingFlow() {
   renderUnderstandingConfirmation();
   showScreen("confirm");
 }
-
 function renderUnderstandingQuestion() {
   if (!pendingUnderstandingQuestion) return;
   if (understandingQuestion) understandingQuestion.textContent = pendingUnderstandingQuestion.prompt;
@@ -853,12 +859,12 @@ function answerUnderstandingQuestion(skip = false) {
   const answer = skip ? "" : understandingAnswer?.value.trim() || "";
   if (answer) {
     understandingDraft = Understanding.applyQuestionAnswer(understandingDraft, pendingUnderstandingQuestion.id, answer);
+  } else {
+    understandingDraft.askedQuestionIds = [...new Set([...(understandingDraft.askedQuestionIds || []), pendingUnderstandingQuestion.id])];
   }
   pendingUnderstandingQuestion = null;
-  renderUnderstandingConfirmation();
-  showScreen("confirm");
+  moveUnderstandingForward();
 }
-
 function renderUnderstandingConfirmation() {
   if (!understandingDraft || !understandingSummary || !timelineEditor) return;
   const summary = Understanding.summaryForConfirmation(understandingDraft);
@@ -868,9 +874,12 @@ function renderUnderstandingConfirmation() {
     ["It's for", summary.audience],
     ["Right now", summary.currentStage],
     ["Already happened", summary.completedWork],
+    ["What is getting in the way", summary.currentBottleneck],
+    ["What that prevents", summary.bottleneckPrevents],
     ["Next meaningful step", summary.nextMilestone],
     ["Timing", summary.targetDate],
     ["What might make it harder", summary.constraints],
+    ["Still uncertain", summary.unknowns],
     ["The path I see", summary.likelyPath]
   ].map(([label, value]) => `
     <div class="summary-row">
@@ -895,7 +904,6 @@ function renderUnderstandingConfirmation() {
     </div>
   `).join("");
 }
-
 function confirmUnderstandingFlow() {
   if (!understandingDraft) return;
   const updates = {};
@@ -921,8 +929,13 @@ function confirmUnderstandingFlow() {
 
 function editUnderstandingFlow() {
   if (!understandingDraft) return;
-  if (projectStoryInput) projectStoryInput.value = understandingDraft.projectDescription;
-  showScreen("welcome");
+  pendingUnderstandingQuestion = {
+    id: "correction",
+    prompt: "What should I change?",
+    help: "Tell me only what feels wrong or incomplete. I'll update that part and show you the project again."
+  };
+  renderUnderstandingQuestion();
+  showScreen("understanding");
 }
 
 document.addEventListener("click", (event) => {
