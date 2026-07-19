@@ -87,7 +87,7 @@
       id: "business",
       legacyType: "business",
       label: "business",
-      keywords: ["business", "customer", "client", "offer", "pricing", "service", "sales", "revenue", "operations"],
+      keywords: ["business", "customer", "customers", "client", "clients", "offer", "pricing", "service", "sales", "revenue", "operations", "open", "make money", "delivery", "requests", "overwhelmed", "booked", "capacity"],
       stages: [
         stage("Clarify the offer", "Know who you help and what they get.", "A plain offer and target customer."),
         stage("Validate demand", "Learn whether a real person wants it.", "One real customer signal or conversation."),
@@ -96,9 +96,9 @@
         stage("Improve and repeat", "Use evidence to make selling or delivery easier.", "One improvement from real feedback.")
       ],
       questions: [
+        q("constraint", "What is making the business hard to move forward right now?", "It could be time, customers, delivery, pricing, or something else.", (model) => hasAny("overwhelmed", "fix first", "delivery", "requests", "too many")(model) || missing("currentBottleneck")(model)),
         q("customer", "Who is the customer you most want to help first?", "Specific beats broad here.", missing("audience")),
-        q("salesStatus", "Have you already sold, tested, or delivered any part of this?", "This tells me whether the next move is learning, selling, or improving delivery.", missing("completedWork")),
-        q("constraint", "What is making the business hard to move forward right now?", "It could be time, money, customers, delivery, pricing, or something else.", missing("currentBottleneck"))
+        q("salesStatus", "Have you already sold, tested, or delivered any part of this?", "This tells me whether the next move is learning, selling, or improving delivery.", missing("completedWork"))
       ],
       commonBottlenecks: ["offer", "customer", "sales", "delivery", "capacity", "pricing"],
       reflectionNouns: { audience: "customer", output: "customer-facing step" }
@@ -225,8 +225,9 @@
     }
 
     if (/marketing|campaign|ads|views|followers|sign up|signup|conversion/.test(lower)) return "marketing";
+    if (/open two years|make money|customer requests|client requests|delivery|booked|capacity|customers/.test(lower)) return "business";
     if (/app|software|prototype|dashboard|mobile|phone|upload|import|screen/.test(lower)) return "software_app";
-    const ordered = ["novel", "nonfiction_book", "podcast", "course", "content_channel", "business", "software_app"];
+    const ordered = ["novel", "nonfiction_book", "marketing", "podcast", "course", "content_channel", "business", "software_app"];
     return ordered.find((id) => STRATEGIES[id].keywords.some((keyword) => lower.includes(keyword))) || "other";
   }
 

@@ -1089,6 +1089,7 @@ function loadState() {
 
 function normalizeProject(project) {
   const migratedUnderstanding = Understanding?.migrateProjectToUnderstanding(project) ?? project.projectUnderstanding ?? null;
+  const recommendationNeedsReconfirmation = Boolean(migratedUnderstanding && !migratedUnderstanding.confirmed);
   const normalized = {
     id: project.id ?? `project-${Date.now()}`,
     type: migratedUnderstanding?.projectType ?? project.type ?? "other",
@@ -1108,7 +1109,7 @@ function normalizeProject(project) {
         : [],
       coffee: Array.isArray(project.memory?.coffee) ? project.memory.coffee : []
     },
-    currentRecommendation: project.currentRecommendation ?? null,
+    currentRecommendation: recommendationNeedsReconfirmation ? null : project.currentRecommendation ?? null,
     createdAt: project.createdAt ?? new Date().toISOString(),
     updatedAt: project.updatedAt ?? project.createdAt ?? new Date().toISOString()
   };

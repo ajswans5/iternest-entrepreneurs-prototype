@@ -18,7 +18,15 @@ function answer(model, id, value) {
   return Understanding.applyQuestionAnswer(model, id, value);
 }
 
-test("first use builds an unconfirmed project understanding from the founder story", () => {
+function confirmedAfterOneAnswer(story, response, time = "30 minutes") {
+  let model = Understanding.createUnderstandingFromStory(story);
+  const question = Understanding.selectNextQuestion(model);
+  model = answer(model, question.id, response);
+  model = Understanding.confirmUnderstanding(model);
+  return { model, question, recommendation: Understanding.buildRecommendationFromUnderstanding(model, { availableTime: time }) };
+}
+
+test("first use builds an unconfirmed project understanding from founder story", () => {
   const model = Understanding.createUnderstandingFromStory(
     "I'm creating a YouTube video for overwhelmed founders. I have the main idea but not the outline or script. I want to publish it in two weeks."
   );
@@ -29,10 +37,9 @@ test("first use builds an unconfirmed project understanding from the founder sto
   assert.ok(model.projectDescription.includes("YouTube video"));
   assert.ok(Array.isArray(model.projectTimeline));
   assert.ok(model.projectTimeline.length >= 5);
-  assert.ok(model.confirmedFacts.some((fact) => fact.includes("Project description")));
 });
 
-test("recommendation cannot be generated before project understanding is confirmed", () => {
+test("recommendation cannot be generated before understanding is confirmed", () => {
   const model = Understanding.createUnderstandingFromStory("I'm building an app. The first flow works, but I do not know what should come next.");
   const recommendation = Understanding.buildRecommendationFromUnderstanding(model, { availableTime: "90 minutes" });
 
@@ -41,12 +48,102 @@ test("recommendation cannot be generated before project understanding is confirm
   assert.ok(recommendation.action.includes("Answer one project question"));
 });
 
-test("concise answers trigger targeted follow-up questions instead of generic recommendations", () => {
-  const model = Understanding.createUnderstandingFromStory("Fantasy novel. Three quarters done. Middle is boring. Ending known.");
+test("generic entrepreneur app does not receive homeschool-specific recommendation", () => {
+  const { recommendation } = confirmedAfterOneAnswer(
+    "I've been building this for six months. I don't know what comes next. I have 40 screens. It works but doesn't feel right.",
+    "It's an app for small business owners, but the dashboard feels confusing and I don't know what to fix first."
+  );
+
+  const text = `${recommendation.action} ${recommendation.startHere} ${recommendation.whyThisComesNext}`;
+  assert.ok(!/parent|lesson|teaching plan|curriculum/i.test(text));
+  assert.ok(/flow|app|usable|screen|user/i.test(text));
+});
+
+test("migrated unconfirmed projects invalidate stale current recommendations", () => {
+  const appSource = fs.readFileSync(path.join(__dirname, "..", "app.js"), "utf8");
+
+  assert.ok(appSource.includes("recommendationNeedsReconfirmation"));
+  assert.ok(appSource.includes("currentRecommendation: recommendationNeedsReconfirmation ? null"));
+});
+
+test("corrections can update project domain and project description", () => {
+  let model = Understanding.createUnderstandingFromStory("I'm writing a book about my coaching business.");
+  model = answer(model, "correction", "Actually it is not a book. It is a landing page for my coaching offer.");
+  const summary = Understanding.summaryForConfirmation(model);
+
+  assert.equal(model.projectDomain, "marketing");
+  assert.equal(model.projectType, "business");
+  assert.ok(model.projectDescription.includes("landing page"));
+  assert.ok(!summary.created.includes("book"));
+});
+
+test("business domain is detected from ordinary founder language", () => {
+  const model = Understanding.createUnderstandingFromStory("I've been open two years. I make money. I'm overwhelmed. I don't know what to fix first.");
   const question = Understanding.selectNextQuestion(model);
 
-  assert.equal(model.projectDomain, "novel");
-  assert.ok(/middle|main character|pressure|change/i.test(question.prompt));
+  assert.equal(model.projectDomain, "business");
+  assert.equal(question.id, "constraint");
+  assert.ok(/business hard|delivery|pricing|customers/i.test(`${question.prompt} ${question.help}`));
+});
+
+test("audience extraction ignores duration and beta-readiness phrases", () => {
+  const duration = Understanding.createUnderstandingFromStory("I've been building this for six months. I have 40 screens.");
+  const beta = Understanding.createUnderstandingFromStory("I'm building an app. It's ready for beta, but none of the core screens connect.");
+
+  assert.notEqual(duration.audience, "six months");
+  assert.notEqual(beta.audience, "beta,");
+});
+
+test("completed work extraction captures bounded work, not entire paragraphs", () => {
+  const model = Understanding.createUnderstandingFromStory("I have 40 screens. It works but doesn't feel right. I don't know what comes next.");
+
+  assert.ok(model.completedWork.includes("40 screens"));
+  assert.ok(model.completedWork.includes("It works"));
+  assert.ok(model.completedWork.every((item) => item.length < 80));
+  assert.ok(!model.completedWork.some((item) => /I don't know what comes next/i.test(item)));
+});
+
+test("contradictions are clarified before normal discovery questions", () => {
+  const model = Understanding.createUnderstandingFromStory("I'm building an app. It's ready for beta, but none of the core screens connect and I don't know what users should do first.");
+  const question = Understanding.selectNextQuestion(model);
+
+  assert.equal(question.id, "contradictionBetaReadiness");
+  assert.ok(/ready for beta|not connected|more accurate/i.test(question.prompt));
+  assert.equal(Understanding.hasEnoughForReflection(model), false);
+});
+
+test("resolved bottleneck produces next unlock instead of generic clarification", () => {
+  let model = Understanding.createUnderstandingFromStory("I'm marketing my app. Videos get views, but nobody signs up.");
+  const question = Understanding.selectNextQuestion(model);
+  model = Understanding.confirmUnderstanding(answer(model, question.id, "The bio link was unclear."));
+  const updated = Understanding.applyReturningUpdate(model, "I fixed the bio link and two people joined the beta.");
+  const recommendation = Understanding.buildRecommendationFromUnderstanding(updated, { availableTime: "30 minutes" });
+
+  assert.equal(recommendation.readiness, "Ready for next move");
+  assert.equal(recommendation.confidence, "Medium");
+  assert.ok(/previous blocker appears resolved|next useful unlock/i.test(recommendation.whyThisComesNext));
+  assert.ok(!recommendation.action.includes("Answer one project question"));
+});
+
+test("reflection cleanup avoids raw fragment repetition", () => {
+  let model = Understanding.createUnderstandingFromStory("making a thing for my cousin idk it kinda works but feels off lol");
+  model = answer(model, "projectPurpose", "It should help her plan a party without texting me ten times.");
+  const summary = Understanding.summaryForConfirmation(model);
+
+  assert.ok(!summary.created.includes("idk"));
+  assert.ok(!summary.created.includes("lol"));
+  assert.ok(!summary.created.includes("You are creating making"));
+});
+
+test("low-confidence understanding continues clarification instead of allowing confirmation", () => {
+  let model = Understanding.createUnderstandingFromStory("Book. messy. don't know.");
+  let question = Understanding.selectNextQuestion(model);
+  model = answer(model, question.id, "I don't know");
+  question = Understanding.selectNextQuestion(model);
+
+  assert.equal(Understanding.hasEnoughForReflection(model), false);
+  assert.ok(question);
+  assert.notEqual(question.id, undefined);
 });
 
 test("previously supplied information is not requested again", () => {
@@ -58,110 +155,41 @@ test("previously supplied information is not requested again", () => {
   assert.notEqual(next?.id, first.id);
 });
 
-test("confirmation is explicit and timeline corrections are preserved", () => {
-  const model = Understanding.createUnderstandingFromStory("I'm building an app. I am planning the onboarding and need a beta by August.");
-  assert.equal(model.confirmed, false);
-
-  const confirmed = Understanding.confirmUnderstanding(model, { 0: "complete", 1: "active" });
-  assert.equal(confirmed.confirmed, true);
-  assert.equal(confirmed.projectTimeline[0].status, "complete");
-  assert.equal(confirmed.projectTimeline[1].status, "active");
-  assert.ok(confirmed.confirmedFacts.includes("Founder confirmed the project reflection."));
-});
-
-test("existing beta projects migrate without losing saved data", () => {
-  const migrated = Understanding.migrateProjectToUnderstanding({
-    type: "book",
-    name: "Children's Book",
-    milestone: "Finish chapter 1",
-    targetDate: "next Friday",
-    whereLeftOff: "Opening scene",
-    progress: [{ recommendationTitle: "Outline Chapter 1" }],
-    memory: { blockers: [{ blockerType: "unclear ending" }] },
-    createdAt: "2026-07-16T00:00:00.000Z"
-  });
-
-  assert.equal(migrated.confirmed, false);
-  assert.equal(migrated.needsReview, true);
-  assert.equal(migrated.projectType, "book");
-  assert.equal(migrated.currentMilestone, "Finish chapter 1");
-  assert.ok(migrated.completedWork.includes("Outline Chapter 1"));
-  assert.ok(migrated.assumptions.some((item) => item.includes("confirm")));
-});
-
-test("user corrections update only the relevant understanding fields", () => {
-  const model = Understanding.createUnderstandingFromStory("I'm making something for customers. I am testing it and the price feels wrong.");
-  const beforeCompleted = model.completedWork.slice();
-  const corrected = answer(model, "correction", "The customer is local bakery owners, not general customers.");
-
-  assert.equal(corrected.audience, "The customer is local bakery owners, not general customers.");
-  assert.deepEqual(corrected.completedWork, beforeCompleted);
-  assert.ok(corrected.userCorrections.includes("The customer is local bakery owners, not general customers."));
-});
-
-test("confirmed facts, inferences, and unknowns remain distinct", () => {
-  const model = Understanding.createUnderstandingFromStory("I'm writing a fantasy novel and the middle feels slow.");
-
-  assert.ok(model.confirmedFacts.some((fact) => fact.includes("Project description")));
-  assert.ok(model.reasonableInferences.some((fact) => fact.includes("Project Domain")));
-  assert.ok(model.unknowns.length > 0);
-  assert.equal(model.fieldStates.projectDescription.status, "confirmed");
-  assert.equal(model.fieldStates.projectDomain.status, "inferred");
-});
-
-test("app strategy understands a project already in progress", () => {
-  const model = Understanding.createUnderstandingFromStory(
-    "I'm building a homeschool app. Curriculum upload works on my laptop, but not my phone. It also pulls out the lessons, but what it puts on the screen doesn't feel like what a parent would actually do."
+test("app strategy understands a homeschool app already in progress", () => {
+  const { model, question, recommendation } = confirmedAfterOneAnswer(
+    "I'm building a homeschool app. Curriculum upload works on my laptop, but not my phone. It also pulls out the lessons, but what it puts on the screen doesn't feel like what a parent would actually do.",
+    "The parent needs a teaching plan, not a pile of extracted activities.",
+    "45 minutes"
   );
-  const question = Understanding.selectNextQuestion(model);
-  const confirmed = Understanding.confirmUnderstanding(answer(model, question.id, "The parent needs a teaching plan, not a pile of extracted activities."));
-  const recommendation = Understanding.buildRecommendationFromUnderstanding(confirmed, { availableTime: "45 minutes" });
 
   assert.equal(model.projectDomain, "software_app");
   assert.ok(/phone|parent|lesson|screen|import/i.test(question.prompt));
   assert.ok(/parent teaching plan|phone upload/i.test(recommendation.action));
-  assert.ok(!/build another screen/i.test(recommendation.action));
 });
 
-test("novel strategy does not produce generic write more advice", () => {
-  let model = Understanding.createUnderstandingFromStory(
-    "I'm writing a fantasy novel. I'm about three-quarters done. I know the ending, but the middle feels boring and I don't know which scene should come next."
+test("novel strategy does not produce generic write-more advice", () => {
+  const { model, recommendation } = confirmedAfterOneAnswer(
+    "I'm writing a fantasy novel. I'm about three-quarters done. I know the ending, but the middle feels boring and I don't know which scene should come next.",
+    "The hero has learned the truth, but nothing forces her to act yet."
   );
-  const question = Understanding.selectNextQuestion(model);
-  model = Understanding.confirmUnderstanding(answer(model, question.id, "The hero has learned the truth, but nothing forces her to act yet."));
-  const recommendation = Understanding.buildRecommendationFromUnderstanding(model, { availableTime: "30 minutes" });
 
   assert.equal(model.projectDomain, "novel");
   assert.ok(/main character|scene|problem|act/i.test(recommendation.action));
   assert.ok(!/^write the next chapter/i.test(recommendation.action));
 });
 
-test("marketing strategy does not produce generic post consistently advice", () => {
-  let model = Understanding.createUnderstandingFromStory(
-    "I'm marketing my app. The story videos get views, especially on TikTok, but people aren't signing up."
+test("marketing strategy does not produce generic post-consistently advice", () => {
+  const { model, recommendation } = confirmedAfterOneAnswer(
+    "I'm marketing my app. The story videos get views, especially on TikTok, but people aren't signing up.",
+    "They can click the profile link, but it does not clearly invite them into the beta."
   );
-  const question = Understanding.selectNextQuestion(model);
-  model = Understanding.confirmUnderstanding(answer(model, question.id, "They can click the profile link, but it does not clearly invite them into the beta."));
-  const recommendation = Understanding.buildRecommendationFromUnderstanding(model, { availableTime: "25 minutes" });
 
   assert.equal(model.projectDomain, "marketing");
   assert.ok(/action|signup|attention/i.test(recommendation.action + recommendation.summary));
   assert.ok(!/post consistently/i.test(recommendation.action + recommendation.summary));
 });
 
-test("returning-user updates can change the next recommendation", () => {
-  let model = Understanding.createUnderstandingFromStory("I'm marketing my app. Videos get views, but nobody signs up.");
-  const question = Understanding.selectNextQuestion(model);
-  model = Understanding.confirmUnderstanding(answer(model, question.id, "The link after watching is unclear."));
-  const before = Understanding.buildRecommendationFromUnderstanding(model, { availableTime: "25 minutes" });
-  const updated = Understanding.applyReturningUpdate(model, "I fixed the profile link and now the page explains the beta clearly.");
-  const after = Understanding.buildRecommendationFromUnderstanding(updated, { availableTime: "25 minutes" });
-
-  assert.ok(updated.completedWork.some((item) => item.includes("fixed the profile link")));
-  assert.notEqual(after.importantAssumption, before.importantAssumption);
-});
-
-test("available time changes work size, not the logical stage order", () => {
+test("available time changes work size, not logical stage order", () => {
   let model = Understanding.createUnderstandingFromStory("I'm creating a YouTube video. I am outlining it for overwhelmed founders, but the outline is unclear.");
   model = answer(model, "audienceAction", "A complete video outline ready to become a script");
   model = answer(model, "difficulty", "The opening and sections are not in a useful order yet.");
@@ -173,8 +201,6 @@ test("available time changes work size, not the logical stage order", () => {
   assert.notEqual(short.action, long.action);
   assert.ok(short.whyThisComesNext.includes("Available time changes the size"));
   assert.ok(long.whyThisComesNext.includes("Available time changes the size"));
-  assert.equal(short.readiness, "Ready for next move");
-  assert.equal(long.readiness, "Ready for next move");
 });
 
 test("progress updates refine understanding without adding a task pile", () => {

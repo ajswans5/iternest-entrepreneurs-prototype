@@ -54,7 +54,7 @@
     const type = legacyTypeForDomain(projectDomain);
     const targetDate = inferTargetDate(text);
     const currentStage = inferCurrentStage(text);
-    const completedWork = inferList(text, ["already", "finished", "completed", "done", "have"]);
+    const completedWork = inferCompletedWork(text);
     const detectedBottleneck = detectBottleneck(text, projectDomain);
     const blockers = detectedBottleneck.currentBottleneck ? [detectedBottleneck.currentBottleneck] : inferList(text, ["stuck", "blocked", "blocker", "in the way", "unclear", "waiting"]);
     const constraints = inferList(text, ["deadline", "constraint", "limited", "only", "before", "by"]);
@@ -62,6 +62,7 @@
     const intendedOutcome = inferOutcome(text);
     const audience = inferAudience(text);
     const currentMilestone = inferMilestone(text, type);
+    const contradictions = detectContradictions(text);
 
     const model = normalizeUnderstanding({
       version: "project-understanding-v1",
@@ -104,6 +105,7 @@
       unverifiedAssumptions: [],
       unknowns: [],
       openQuestions: [],
+      contradictions,
       fieldStates: {},
       confidenceByField: {},
       confidenceLevel: "Low",
@@ -174,6 +176,7 @@
       unverifiedAssumptions: asArray(input.unverifiedAssumptions || input.assumptions),
       unknowns: asArray(input.unknowns),
       openQuestions: asArray(input.openQuestions),
+      contradictions: asArray(input.contradictions),
       askedQuestionIds: asArray(input.askedQuestionIds),
       fieldStates: input.fieldStates || {},
       confidenceByField: input.confidenceByField || {},
@@ -204,6 +207,7 @@
     model.reasonableInferences = unique([...model.reasonableInferences, ...model.inferredFacts]);
     model.unverifiedAssumptions = unique([...model.unverifiedAssumptions, ...model.assumptions]);
     model.openQuestions = buildOpenQuestions(model);
+    if (model.contradictions.length) model.openQuestions = unique([...model.openQuestions, ...model.contradictions.map((item) => item.question || item.summary || String(item))]);
     refreshUnknowns(model);
     model.confidenceLevel = confidenceForUnderstanding(model);
     return model;
@@ -255,6 +259,10 @@
   function selectNextQuestion(model) {
     const strategy = getStrategy(model.projectDomain);
     const asked = new Set(model.askedQuestionIds || []);
+    const contradiction = (model.contradictions || []).find((item) => !asked.has(item.id));
+    if (contradiction) {
+      return { id: contradiction.id, prompt: contradiction.question, help: "I want to resolve this before I make a recommendation." };
+    }
     const domainQuestion = (strategy.questions || []).find((question) => !asked.has(question.id) && question.when(model));
     if (domainQuestion) {
       return { id: domainQuestion.id, prompt: domainQuestion.prompt, help: domainQuestion.help, domain: strategy.id };
@@ -269,7 +277,16 @@
     ];
 
     const missing = checks.find(([field]) => !asked.has(field) && isMissing(model, field));
-    if (!missing) return null;
+    if (!missing) {
+      if (!basicEnoughForReflection(model) && !asked.has("lowConfidenceClarification")) {
+        return {
+          id: "lowConfidenceClarification",
+          prompt: "What feels most unclear or unfinished right now?",
+          help: "A short answer is enough. I need the part that would change what comes next."
+        };
+      }
+      return null;
+    }
     return { id: missing[0], prompt: missing[1], help: missing[2] };
   }
 
@@ -279,15 +296,50 @@
     next.askedQuestionIds = unique([...(next.askedQuestionIds || []), questionId].filter(Boolean));
     if (!value) return next;
 
-    if (/^(i don'?t know|not sure|unknown|no idea)$/i.test(value)) {
+    if (/^(i don\'?t know|not sure|unknown|no idea)$/i.test(value)) {
       next.unknowns = unique([...next.unknowns, labelFor(questionId).toLowerCase()]);
       next.openQuestions = unique([...next.openQuestions, labelFor(questionId)]);
     } else if (questionId === "correction") {
       return applyCorrection(next, value);
+    } else if (questionId.startsWith("contradiction")) {
+      next.contradictions = (next.contradictions || []).filter((item) => item.id !== questionId);
+      next.confirmedFacts.push(`Clarification: ${value}`);
+      if (questionId === "contradictionTiming") {
+        next.dateFlexibility = /flex|no deadline|not a hard/i.test(value) ? "flexible" : "fixed";
+        if (!/no deadline|flex/i.test(value)) next.targetDate = value;
+        setFieldState(next, "targetDate", value, "confirmed", "Founder resolved a timing conflict.", "high");
+      } else {
+        const saysNotReady = /not ready|not beta ready|not launch ready|foundation|connect|core|still|unfinished/i.test(value);
+        if (saysNotReady) next.currentStage = "building";
+        if (/ready|beta|test/i.test(value) && !saysNotReady) next.currentStage = "testing";
+        setFieldState(next, "currentStage", next.currentStage || value, "confirmed", "Founder resolved a conflicting statement.", "high");
+      }
+      if (/stuck|blocked|unclear|problem|wrong|not working|doesn\'?t feel/i.test(value)) {
+        next.currentBottleneck = simplifyBottleneck(value, next);
+        next.blockers = unique([next.currentBottleneck, ...next.blockers].filter(Boolean));
+        next.bottleneckEvidence = unique([...next.bottleneckEvidence, value]);
+        next.bottleneckPrevents = preventsForBottleneck(next.currentBottleneck, next);
+      }
+    } else if (questionId === "userExperience") {
+      next.definitionOfSuccess = value;
+      next.intendedOutcome = next.intendedOutcome || value;
+      next.immediateMilestone = value;
+      next.currentMilestone = value;
+      if (/confus|wrong|hard|stuck|unclear|doesn\'?t feel|doesnt feel|not working|problem/i.test(value)) {
+        next.currentBottleneck = simplifyBottleneck(value, next);
+        next.blockers = unique([next.currentBottleneck, ...next.blockers].filter(Boolean));
+        next.bottleneckEvidence = unique([...next.bottleneckEvidence, value]);
+        next.bottleneckPrevents = preventsForBottleneck(next.currentBottleneck, next);
+      }
+    } else if (questionId === "lowConfidenceClarification") {
+      next.currentBottleneck = simplifyBottleneck(value, next);
+      next.blockers = unique([next.currentBottleneck, ...next.blockers].filter(Boolean));
+      next.bottleneckEvidence = unique([...next.bottleneckEvidence, value]);
+      next.bottleneckPrevents = preventsForBottleneck(next.currentBottleneck, next);
     } else if (questionId === "completedWork" || questionId === "dependencies" || questionId === "workingCapability" || questionId === "existingContent" || questionId === "curriculumStatus") {
       next[questionId] = splitList(value);
       if (questionId !== "completedWork") next.completedWork = unique([...next.completedWork, ...splitList(value)]);
-    } else if (["mobileBehavior", "userExperience", "middleChange", "protagonistPressure", "afterViewingPath", "productionConstraint", "learnerStuckPoint", "difficulty", "constraint"].includes(questionId)) {
+    } else if (["mobileBehavior", "middleChange", "protagonistPressure", "afterViewingPath", "productionConstraint", "learnerStuckPoint", "difficulty", "constraint"].includes(questionId)) {
       const bottleneck = simplifyBottleneck(value, next);
       next.currentBottleneck = bottleneck;
       next.blockers = unique([bottleneck, ...next.blockers].filter(Boolean));
@@ -344,24 +396,42 @@
     next.userCorrections = unique([...next.userCorrections, value]);
     next.confirmedFacts.push(`Founder correction: ${value}`);
 
-    if (/audience|reader|customer|parent|viewer|listener|learner|for /.test(lower)) {
-      next.audience = value;
-      setFieldState(next, "audience", value, "confirmed", "Founder corrected who this is for.", "high");
-    } else if (/done|finished|success|ready|goal|milestone/.test(lower)) {
+    const correctedDomain = StrategyApi?.resolveDomain(value, "") || normalizeDomain(inferProjectType(value));
+    const domainChangeRequested = correctedDomain !== "other" && correctedDomain !== next.projectDomain;
+    const descriptionChangeRequested = /actually|not a|not an|instead|it is|it's|this is|landing page|website|app|book|novel|business|marketing|course|podcast|video/.test(lower);
+
+    if (domainChangeRequested) {
+      next.projectDomain = correctedDomain;
+      next.projectType = legacyTypeForDomain(correctedDomain);
+      setFieldState(next, "projectDomain", correctedDomain, "confirmed", "Founder corrected what kind of project this is.", "high");
+    }
+
+    if (descriptionChangeRequested) {
+      next.projectDescription = cleanCorrectionDescription(value) || value;
+      next.originalDescription = next.projectDescription;
+      next.projectName = inferProjectName(next.projectDescription, next.projectType);
+      setFieldState(next, "projectDescription", next.projectDescription, "confirmed", "Founder corrected the project description.", "high");
+    }
+
+    if (/audience|reader|customer|parent|viewer|listener|learner| for /.test(lower) && !domainChangeRequested) {
+      next.audience = cleanAudience(value) || value;
+      setFieldState(next, "audience", next.audience, "confirmed", "Founder corrected who this is for.", "high");
+    }
+
+    if (/done|finished|success|ready|goal|milestone/.test(lower)) {
       next.definitionOfSuccess = value;
       next.intendedOutcome = value;
       next.immediateMilestone = value;
       next.currentMilestone = value;
       setFieldState(next, "definitionOfSuccess", value, "confirmed", "Founder corrected what success means.", "high");
-    } else if (/stuck|blocking|problem|hard|difficult|wrong|missing|doesn'?t feel|unclear/.test(lower)) {
+    }
+
+    if (/stuck|blocking|problem|hard|difficult|wrong|missing|doesn'?t feel|unclear|overwhelmed|not working/.test(lower)) {
       next.currentBottleneck = simplifyBottleneck(value, next);
       next.blockers = unique([next.currentBottleneck, ...next.blockers].filter(Boolean));
       next.bottleneckEvidence = unique([...next.bottleneckEvidence, value]);
       next.bottleneckPrevents = preventsForBottleneck(next.currentBottleneck, next);
       setFieldState(next, "currentBottleneck", next.currentBottleneck, "confirmed", "Founder corrected what is getting in the way.", "high");
-    } else {
-      next.projectDescription = `${next.projectDescription} Correction: ${value}`.trim();
-      setFieldState(next, "projectDescription", next.projectDescription, "confirmed", "Founder corrected the project picture.", "high");
     }
 
     next.versionHistory.push({ at: new Date().toISOString(), event: "corrected", note: value });
@@ -370,7 +440,6 @@
     refreshUnknowns(next);
     return next;
   }
-
   function confirmUnderstanding(model, timelineUpdates = {}) {
     const next = normalizeUnderstanding(model);
     next.confirmed = true;
@@ -481,10 +550,13 @@
     if (isMissing(model, "currentStage")) {
       return { ready: false, question: nextQuestion, reason: "I need to know where the project is before choosing work.", gate: "needs-stage" };
     }
+    const nextStage = nextReadyStage(model);
     if (!model.currentBottleneck) {
+      if (nextStage && nextStage.status !== "unknown" && (model.completedWork.length || model.continuity?.whatChanged)) {
+        return { ready: true, nextStage, nextUnlock: true, reason: "The previous blocker appears resolved, so the next useful move is the next limiting part of the project path." };
+      }
       return { ready: false, question: nextQuestion, reason: "I need to know what is getting in the way before choosing work.", gate: "needs-bottleneck" };
     }
-    const nextStage = nextReadyStage(model);
     if (!nextStage) {
       return { ready: false, question: nextQuestion, reason: "I do not know the next ready dependency yet." };
     }
@@ -522,7 +594,7 @@
     }
 
     const stage = readiness.nextStage;
-    const domainSpecific = domainRecommendation(model, stage, minutes);
+    const domainSpecific = readiness.nextUnlock ? null : domainRecommendation(model, stage, minutes);
     if (domainSpecific) return domainSpecific;
     const size = minutes <= 15 ? "smallest decision inside" : minutes <= 45 ? "focused draft of" : "complete usable pass on";
     const action = actionForStage(model, stage, minutes, size);
@@ -532,11 +604,11 @@
       action,
       startHere,
       summary: `${stage.name} comes next because it creates ${stage.requiredOutput.toLowerCase()} for ${model.currentMilestone || model.intendedOutcome || "the project"}.`,
-      whyThisComesNext: `${stage.name} is the next unfinished dependency in the project path. Available time changes the size of the work, not the order.`,
+      whyThisComesNext: readiness.nextUnlock ? `The previous blocker appears resolved. ${stage.name} is now the next useful unlock in the project path.` : `${stage.name} is the next unfinished dependency in the project path. Available time changes the size of the work, not the order.`,
       doneWhen: doneForStage(stage, minutes),
       avoid: avoidForStage(model, stage),
       save: saveForStage(model, stage),
-      confidence: confidenceForModel(model, stage),
+      confidence: readiness.nextUnlock ? "Medium" : confidenceForModel(model, stage),
       importantAssumption: assumptionForModel(model),
       estimatedMinutes: minutes,
       readiness: "Ready for next move",
@@ -547,15 +619,17 @@
   function domainRecommendation(model, stage, minutes) {
     const domain = model.projectDomain;
     const text = `${model.projectDescription} ${model.currentBottleneck}`.toLowerCase();
+    const output = stage.requiredOutput.replace(/[.]+$/, "").toLowerCase();
     if (domain === "software_app") {
-      const parentPlan = /parent|lesson|teaching|activities|not what|doesn'?t feel/.test(text);
+      if (!hasConfidentDomainSignal(model, "software_app")) return null;
+      const parentPlan = /(parent|lesson|teaching|activities|curriculum)/.test(text) && /(not what|doesn\'?t feel|screen|plan|output|activity)/.test(text);
       const mobile = /phone|mobile|laptop/.test(text);
       return shapedRecommendation(model, stage, minutes, {
         action: parentPlan
           ? "Define the parent teaching plan before building another screen."
           : mobile
             ? "Reproduce the phone upload problem and name the failing step."
-            : `Create the next usable piece of ${stage.requiredOutput.toLowerCase()}.`,
+            : `Create the next usable piece of ${output}.`,
         startHere: parentPlan
           ? "Start with one imported lesson and write what a parent should see, decide, and do next."
           : mobile
@@ -576,12 +650,13 @@
           ? "One imported lesson has been translated into a parent-friendly teaching plan with a clear next action."
           : mobile
             ? "You know the exact step where phone upload fails and what must be fixed first."
-            : `You have ${stage.requiredOutput.toLowerCase()}.`,
+            : `You have ${output}.`,
         avoid: parentPlan ? "Do not build another screen until the parent action is clear." : "Do not widen into unrelated app improvements."
       });
     }
 
     if (domain === "novel") {
+      if (!hasConfidentDomainSignal(model, "novel")) return null;
       return shapedRecommendation(model, stage, minutes, {
         action: "Decide what new problem forces the main character to act before drafting another chapter.",
         startHere: "Write the moment where the current situation becomes impossible for the main character to ignore.",
@@ -594,6 +669,7 @@
     }
 
     if (domain === "marketing") {
+      if (!hasConfidentDomainSignal(model, "marketing")) return null;
       return shapedRecommendation(model, stage, minutes, {
         action: "Make the next piece of attention lead to one clear action.",
         startHere: "Write the exact action someone should take after watching, then update the next video ending or profile link around that action.",
@@ -629,7 +705,7 @@
   }
 
   function actionForStage(model, stage, minutes, size) {
-    const output = stage.requiredOutput.replace(/\.$/, "").toLowerCase();
+    const output = stage.requiredOutput.replace(/[.]+$/, "").toLowerCase();
     if (minutes <= 15) return `Decide the first piece of ${output}.`;
     if (minutes <= 45) return `Create a ${size} ${output}.`;
     return `Create and review a ${size} ${output}.`;
@@ -737,12 +813,7 @@
   function hasEnoughForReflection(model) {
     const ready = normalizeUnderstanding(model);
     const hasFollowUp = Boolean((ready.askedQuestionIds || []).length);
-    return Boolean(
-      hasFollowUp &&
-      ready.projectDescription &&
-      (ready.currentStage || ready.completedWork.length || ready.activeWork.length) &&
-      (ready.currentBottleneck || ready.intendedOutcome || ready.definitionOfSuccess)
-    );
+    return Boolean(hasFollowUp && basicEnoughForReflection(ready) && confidenceForUnderstanding(ready) !== "Low");
   }
 
   function applyReturningUpdate(model, update = {}) {
@@ -904,6 +975,7 @@
   }
 
   function confidenceForUnderstanding(model) {
+    if ((model.contradictions || []).length) return "Low";
     if (model.confirmed && model.unknowns.length <= 1 && model.currentBottleneck) return "High";
     if (model.projectDescription && (model.currentStage || model.completedWork.length) && model.currentBottleneck) return "Medium";
     return "Low";
@@ -911,13 +983,18 @@
 
   function plainCreated(model) {
     const desc = model.projectDescription || model.projectName || "a project";
+    const cleanDesc = cleanProjectText(desc);
     if (model.projectDomain === "software_app" && /homeschool/i.test(desc)) return "You are building a homeschool application.";
+    if (model.projectDomain === "software_app") return /app|software|prototype|dashboard|screen|flow/i.test(desc) ? "You are building an application." : "You are building a software project.";
     if (model.projectDomain === "novel") return `You are writing ${/fantasy/i.test(desc) ? "a fantasy novel" : "a novel"}.`;
+    if (model.projectDomain === "nonfiction_book") return "You are writing a nonfiction book.";
     if (model.projectDomain === "marketing") {
       if (/marketing my app/i.test(desc)) return "You are marketing your app.";
-      return "You are marketing something you want people to act on.";
+      return "You are working on a marketing project.";
     }
-    return `You are creating ${desc.replace(/^i('| a)?m\s+(building|writing|creating|marketing)\s+/i, "")}.`;
+    if (model.projectDomain === "business") return "You are working on a business.";
+    if (cleanDesc) return `You are creating ${cleanDesc}.`;
+    return "You are creating a project.";
   }
 
   function lowerFirst(value) {
@@ -925,6 +1002,99 @@
     return text ? text[0].toLowerCase() + text.slice(1) : text;
   }
 
+  function basicEnoughForReflection(model) {
+    return Boolean(
+      model.projectDescription &&
+      !(model.contradictions || []).length &&
+      (model.currentStage || model.completedWork.length || model.activeWork.length) &&
+      (model.currentBottleneck || model.intendedOutcome || model.definitionOfSuccess)
+    );
+  }
+
+  function hasConfidentDomainSignal(model, domain) {
+    const text = `${model.originalDescription || ""} ${model.projectDescription || ""} ${(model.confirmedFacts || []).join(" ")}`.toLowerCase();
+    if (model.fieldStates?.projectDomain?.status === "confirmed") return true;
+    if (domain === "software_app") return /app|software|prototype|dashboard|mobile|phone|upload|import|screen|screens|user flow|beta/.test(text);
+    if (domain === "novel") return /novel|fiction|fantasy|romance|mystery|thriller|chapter|scene|character|draft|ending/.test(text);
+    if (domain === "marketing") return /marketing|campaign|ads|views|followers|sign up|signup|conversion|tiktok|instagram|video/.test(text);
+    if (domain === "business") return /business|customer|client|offer|pricing|service|sales|revenue|open|make money|delivery|requests|overwhelmed/.test(text);
+    return true;
+  }
+
+  function detectContradictions(text) {
+    const lower = text.toLowerCase();
+    const contradictions = [];
+    if (/ready for beta|ready to beta|beta ready|ready to launch|ready for launch/.test(lower) && /but|however|except/.test(lower) && /none|not|don'?t know|doesn'?t|core|connect|unfinished|missing/.test(lower)) {
+      contradictions.push({
+        id: "contradictionBetaReadiness",
+        summary: "Beta readiness conflicts with unfinished foundation.",
+        question: "I heard that this may be ready for beta, but also that important pieces are not connected yet. Which is more accurate right now?"
+      });
+    }
+    if (/launched|launch|deadline|friday|urgent/.test(lower) && /no deadline|flexible|not a deadline|no hard date/.test(lower)) {
+      contradictions.push({
+        id: "contradictionTiming",
+        summary: "Timing sounds both urgent and flexible.",
+        question: "I heard both urgency and flexibility. Is there a real deadline, or is this just something you want to move soon?"
+      });
+    }
+    return contradictions;
+  }
+
+  function inferCompletedWork(text) {
+    const lower = text.toLowerCase();
+    const items = [];
+    const explicit = text.match(/(?:already|finished|completed|done|built|made|written|created)\s+([^.;]+)/i)?.[1];
+    if (explicit) items.push(cleanCompletedItem(explicit));
+    const have = text.match(/\bi have\s+([^.;]+)/i)?.[1];
+    if (have && !/no idea|don'?t know|not sure/i.test(have)) items.push(cleanCompletedItem(have));
+    const works = text.match(/([^.;]*(?:works|is working|runs)[^.;]*)/i)?.[1];
+    if (works) items.push(cleanCompletedItem(works));
+    return unique(items.map(clean).filter((item) => item && item.length <= 120)).slice(0, 3);
+  }
+
+  function cleanCompletedItem(value) {
+    return clean(value)
+      .replace(/^been\s+/i, "")
+      .replace(/,?\s*but\s+.*$/i, "")
+      .replace(/\s+and\s+i\s+don'?t\s+know.*$/i, "")
+      .replace(/\s+but\s+doesn'?t\s+feel.*$/i, "")
+      .replace(/\s+for\s+\d+\s+(?:days|weeks|months|years).*$/i, "");
+  }
+
+  function cleanAudience(value) {
+    const candidate = clean(value)
+      .replace(/^(for|helps|audience is|readers are|viewers are|customers are)\s+/i, "")
+      .split(/\b(?:but|and i|idk|lol|it kinda|it works|i have|i've)\b/i)[0]
+      .replace(/[.]+$/g, "")
+      .trim();
+    if (/^\d+\s+(?:days|weeks|months|years)$/i.test(candidate)) return "";
+    if (/^(six|seven|eight|nine|ten|eleven|twelve)\s+(?:days|weeks|months|years)$/i.test(candidate)) return "";
+    if (/^(beta|launch),?$/i.test(candidate)) return "";
+    return candidate;
+  }
+
+  function cleanCorrectionDescription(value) {
+    const text = clean(value)
+      .replace(/^actually[,\s]*/i, "")
+      .replace(/^it is not\s+(?:a|an)?\s*[^.]+\.\s*/i, "")
+      .replace(/^it's not\s+(?:a|an)?\s*[^.]+\.\s*/i, "")
+      .replace(/^instead[,\s]*/i, "");
+    return text || clean(value);
+  }
+
+  function cleanProjectText(value) {
+    return clean(value)
+      .replace(/^i(?:\'m| am)\s+/i, "")
+      .replace(/^(?:making|building|creating|writing)\s+/i, "")
+      .replace(/^i(?:'ve| have)\s+been\s+/i, "")
+      .replace(/\bidk\b/ig, "")
+      .replace(/\blol\b/ig, "")
+      .replace(/\s+/g, " ")
+      .split(/\s+but\s+/i)[0]
+      .replace(/[.]+$/g, "")
+      .trim();
+  }
   function inferProjectType(text) {
     const lower = text.toLowerCase();
     if (/app|software|website|dashboard|prototype|saas|mobile/.test(lower)) return "app";
@@ -948,7 +1118,14 @@
   }
 
   function inferAudience(text) {
-    return extractAfter(text, ["for ", "helps ", "audience is ", "readers are ", "viewers are ", "customers are "]);
+    const patterns = [/\bfor\s+([^.;]+)/i, /\bhelps\s+([^.;]+)/i, /\baudience is\s+([^.;]+)/i, /\breaders are\s+([^.;]+)/i, /\bviewers are\s+([^.;]+)/i, /\bcustomers are\s+([^.;]+)/i];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (!match) continue;
+      const audience = cleanAudience(match[1]);
+      if (audience) return audience;
+    }
+    return "";
   }
 
   function inferMilestone(text, type) {
